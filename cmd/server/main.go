@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"creaciones-api/internal/db"
+	"creaciones-api/internal/incomes"
 	"creaciones-api/internal/orders"
 )
 
@@ -22,7 +23,6 @@ func main() {
 		log.Fatalf("Failed to connect to the database: %v", err)
 	}
 	defer conn.Close()
-
 
 	// ---------------------------------------
 	// Fiber Config
@@ -87,6 +87,16 @@ func main() {
 
 	ordersGroup := api.Group("/orders")
 	ordersHandler.RegisterRoutes(ordersGroup)
+
+	// ---------------------------------------
+	// Orders API Setup
+	// ---------------------------------------
+	incomesRepo := incomes.NewRepository(conn)
+	incomesService := incomes.NewService(incomesRepo)
+	incomesHandler := incomes.NewHandler(incomesService)
+
+	incomesGroup := api.Group("/incomes")
+	incomesHandler.RegisterRoutes(incomesGroup)
 
 	// ---------------------------------------
 	// Start Server
