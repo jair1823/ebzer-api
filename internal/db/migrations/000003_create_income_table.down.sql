@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS income;
+DROP TYPE IF EXISTS payment_method;
