@@ -6,19 +6,15 @@ type OrderStatus string
 type DeliveryType string
 
 const (
-	StatusNew            OrderStatus = "new"
-	StatusDesign         OrderStatus = "design"
-	StatusPendingClient  OrderStatus = "pending_client"
-	StatusProduction     OrderStatus = "production"
-	StatusReady          OrderStatus = "ready"
-	StatusDelivered      OrderStatus = "delivered"
+	StatusPending            OrderStatus = "pending"
+	StatusCompleted         OrderStatus = "completed"
+	StatusPaid      OrderStatus = "paid"
 )
 
 const (
 	DeliveryPickup   DeliveryType = "pickup"
 	DeliveryShipping DeliveryType = "shipping"
 	DeliveryDelivery DeliveryType = "delivery"
-	DeliveryOther    DeliveryType = "other"
 )
 
 type Order struct {
@@ -29,7 +25,10 @@ type Order struct {
 	EntryDate             time.Time    `json:"entry_date"`
 	EstimatedDeliveryDate *time.Time   `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType `json:"delivery_type"`
+	ClientName            *string       `json:"client_name"`
+	ClientPhone           *string       `json:"client_phone"`
 	Notes                 *string      `json:"notes"`
+	Paid50Percent         bool         `json:"paid_50_percent"`
 	CreatedAt             time.Time    `json:"created_at"`
 	UpdatedAt             time.Time    `json:"updated_at"`
 }
