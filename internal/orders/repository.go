@@ -13,6 +13,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id int) (*Order, error)
 	GetAll(ctx context.Context, status *OrderStatus, from *time.Time, to *time.Time) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
+	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
 }
 
@@ -193,5 +194,17 @@ func (r *repository) Delete(ctx context.Context, id int) error {
 		return errors.New("order not found")
 	}
 
+	return nil
+}
+
+// -------------------- FINISH ORDER --------------------
+func (r *repository) FinishOrder(ctx context.Context, id int) error {
+	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status = 'paid', updated_at = NOW() WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	if rows, _ := result.RowsAffected(); rows == 0 {
+		return errors.New("order not found")
+	}
 	return nil
 }

@@ -11,6 +11,7 @@ type Service interface {
 	GetByID(ctx context.Context, id int) (*Order, error)
 	GetAll(ctx context.Context, status *OrderStatus, from, to *string) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
+	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
 }
 
@@ -78,4 +79,10 @@ func (s *service) Update(ctx context.Context, id int, dto UpdateOrderDTO) error 
 
 func (s *service) Delete(ctx context.Context, id int) error {
 	return s.repo.Delete(ctx, id)
+}
+
+// -------------------- Finish Order --------------------
+
+func (s *service) FinishOrder(ctx context.Context, id int) error {
+	return s.repo.FinishOrder(ctx, id)
 }
