@@ -6,8 +6,8 @@ type OrderStatus string
 type DeliveryType string
 
 const (
-	StatusPending            OrderStatus = "pending"
-	StatusCompleted         OrderStatus = "completed"
+	StatusPending   OrderStatus = "pending"
+	StatusCompleted OrderStatus = "completed"
 	StatusPaid      OrderStatus = "paid"
 )
 
@@ -25,8 +25,8 @@ type Order struct {
 	EntryDate             time.Time    `json:"entry_date"`
 	EstimatedDeliveryDate *time.Time   `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType `json:"delivery_type"`
-	ClientName            *string       `json:"client_name"`
-	ClientPhone           *string       `json:"client_phone"`
+	ClientName            *string      `json:"client_name"`
+	ClientPhone           *string      `json:"client_phone"`
 	Notes                 *string      `json:"notes"`
 	Paid50Percent         bool         `json:"paid_50_percent"`
 	CreatedAt             time.Time    `json:"created_at"`
