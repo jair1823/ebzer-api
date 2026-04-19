@@ -7,7 +7,7 @@ CREATE TABLE orders (
     entry_date TEXT NOT NULL DEFAULT (datetime('now')),
     estimated_delivery_date TEXT,
     delivery_type TEXT NOT NULL DEFAULT 'pickup' CHECK(delivery_type IN ('pickup', 'shipping', 'delivery')),
-    client_name TEXT,
+    client_name TEXT NOT NULL,
     client_phone TEXT,
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),

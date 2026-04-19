@@ -38,9 +38,9 @@ func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error
 	err := r.db.QueryRowContext(ctx, query,
 		dto.Description,
 		dto.AmountCharged,
-		dto.Status,
+		*dto.Status,
 		dto.EstimatedDeliveryDate,
-		dto.DeliveryType,
+		*dto.DeliveryType,
 		dto.Notes,
 		dto.ClientName,
 		dto.ClientPhone,
@@ -144,14 +144,14 @@ func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time
 func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) error {
 	query := `
 	UPDATE orders SET
-		description = COALESCE($1, description),
-		amount_charged = COALESCE($2, amount_charged),
-		status = COALESCE($3, status),
-		estimated_delivery_date = COALESCE($4, estimated_delivery_date),
-		delivery_type = COALESCE($5, delivery_type),
-		notes = COALESCE($6, notes),
-		client_name = COALESCE($7, client_name),
-		client_phone = COALESCE($8, client_phone),
+		description = $1,
+		amount_charged = $2,
+		status = $3,
+		estimated_delivery_date = $4,
+		delivery_type = $5,
+		notes = CASE WHEN $6 = '' THEN NULL ELSE $6 END,
+		client_name = $7,
+		client_phone = CASE WHEN $8 = '' THEN NULL ELSE $8 END,
 		updated_at = datetime('now')
 	WHERE id = $9;
 	`

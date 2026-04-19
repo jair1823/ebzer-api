@@ -39,6 +39,30 @@ func (s *service) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 	if dto.AmountCharged < 0 {
 		return 0, errors.New("amount_charged must be >= 0")
 	}
+	if dto.ClientName == "" {
+		return 0, errors.New("client_name is required")
+	}
+
+	// Aplicar defaults según schema
+	if dto.Status == nil {
+		confirmed := StatusConfirmed
+		dto.Status = &confirmed
+	}
+
+	if dto.DeliveryType == nil {
+		pickup := DeliveryPickup
+		dto.DeliveryType = &pickup
+	}
+
+	// Validar valores
+	if !isValidOrderStatus(*dto.Status) {
+		return 0, errors.New("invalid order status")
+	}
+
+	if !isValidDeliveryType(*dto.DeliveryType) {
+		return 0, errors.New("invalid delivery type")
+	}
+
 	return s.repo.Create(ctx, dto)
 }
 
@@ -132,4 +156,24 @@ func (s *service) GetPaymentStatus(ctx context.Context, orderID int) (*PaymentSt
 		PercentagePaid: percentagePaid,
 		IsFullyPaid:    totalPaid >= order.AmountCharged,
 	}, nil
+}
+
+// -------------------- Validation Helpers --------------------
+
+func isValidOrderStatus(status OrderStatus) bool {
+	switch status {
+	case StatusConfirmed, StatusInProgress, StatusReady, StatusShipped, StatusDelivered, StatusCancelled:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidDeliveryType(deliveryType DeliveryType) bool {
+	switch deliveryType {
+	case DeliveryPickup, DeliveryShipping, DeliveryDelivery:
+		return true
+	default:
+		return false
+	}
 }

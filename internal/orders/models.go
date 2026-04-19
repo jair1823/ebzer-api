@@ -30,7 +30,7 @@ type Order struct {
 	EntryDate             db.Time      `json:"entry_date"`
 	EstimatedDeliveryDate *db.NullTime `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType `json:"delivery_type"`
-	ClientName            *string      `json:"client_name"`
+	ClientName            string       `json:"client_name"`
 	ClientPhone           *string      `json:"client_phone"`
 	Notes                 *string      `json:"notes"`
 	CreatedAt             db.Time      `json:"created_at"`

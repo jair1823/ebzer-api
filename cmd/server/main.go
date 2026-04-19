@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"creaciones-api/internal/db"
+	"creaciones-api/internal/expenses"
 	"creaciones-api/internal/incomes"
 	"creaciones-api/internal/orders"
 )
@@ -107,6 +108,16 @@ func main() {
 
 	incomesGroup := api.Group("/incomes")
 	incomesHandler.RegisterRoutes(incomesGroup)
+
+	// ---------------------------------------
+	// Expenses API Setup
+	// ---------------------------------------
+	expensesRepo := expenses.NewRepository(conn)
+	expensesService := expenses.NewService(expensesRepo)
+	expensesHandler := expenses.NewHandler(expensesService)
+
+	expensesGroup := api.Group("/expenses")
+	expensesHandler.RegisterRoutes(expensesGroup)
 
 	// ---------------------------------------
 	// Start Server

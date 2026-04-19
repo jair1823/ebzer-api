@@ -34,10 +34,10 @@ func (c *CustomFloat64) UnmarshalJSON(data []byte) error {
 type CreateOrderDTO struct {
 	Description           string        `json:"description"`
 	AmountCharged         CustomFloat64 `json:"amount_charged"`
-	Status                OrderStatus   `json:"status"`
+	Status                *OrderStatus  `json:"status"`
 	EstimatedDeliveryDate *time.Time    `json:"estimated_delivery_date"`
-	DeliveryType          DeliveryType  `json:"delivery_type"`
-	ClientName            *string       `json:"client_name"`
+	DeliveryType          *DeliveryType `json:"delivery_type"`
+	ClientName            string        `json:"client_name"`
 	ClientPhone           *string       `json:"client_phone"`
 	Notes                 *string       `json:"notes"`
 }

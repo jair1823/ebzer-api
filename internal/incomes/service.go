@@ -25,8 +25,8 @@ func NewService(repo Repository) Service {
 // -------------------- Create --------------------
 
 func (s *service) Create(ctx context.Context, dto CreateIncomeDTO) (int, error) {
-	if dto.OrderID == "" {
-		return 0, errors.New("order ID is required")
+	if dto.OrderID <= 0 {
+		return 0, errors.New("order ID is required and must be positive")
 	}
 	if dto.Amount < 0 {
 		return 0, errors.New("amount must be >= 0")
