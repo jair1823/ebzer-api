@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"creaciones-api/internal/incomes"
 )
 
 type Service interface {
@@ -13,14 +15,19 @@ type Service interface {
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
+	GetPaymentStatus(ctx context.Context, orderID int) (*PaymentStatus, error)
 }
 
 type service struct {
-	repo Repository
+	repo       Repository
+	incomeRepo incomes.Repository
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, incomeRepo incomes.Repository) Service {
+	return &service{
+		repo:       repo,
+		incomeRepo: incomeRepo,
+	}
 }
 
 // -------------------- Create --------------------
@@ -85,4 +92,44 @@ func (s *service) Delete(ctx context.Context, id int) error {
 
 func (s *service) FinishOrder(ctx context.Context, id int) error {
 	return s.repo.FinishOrder(ctx, id)
+}
+
+// -------------------- Get Payment Status --------------------
+
+func (s *service) GetPaymentStatus(ctx context.Context, orderID int) (*PaymentStatus, error) {
+	// Get order to validate it exists and get amount charged
+	order, err := s.repo.GetByID(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	if order == nil {
+		return nil, errors.New("order not found")
+	}
+
+	// Get all incomes for this order
+	orderIncomes, err := s.incomeRepo.GetByOrderID(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate total paid
+	totalPaid := 0.0
+	for _, income := range orderIncomes {
+		totalPaid += income.Amount
+	}
+
+	// Calculate remaining and percentage
+	remaining := order.AmountCharged - totalPaid
+	percentagePaid := 0.0
+	if order.AmountCharged > 0 {
+		percentagePaid = (totalPaid / order.AmountCharged) * 100
+	}
+
+	return &PaymentStatus{
+		TotalPaid:      totalPaid,
+		AmountCharged:  order.AmountCharged,
+		Remaining:      remaining,
+		PercentagePaid: percentagePaid,
+		IsFullyPaid:    totalPaid >= order.AmountCharged,
+	}, nil
 }

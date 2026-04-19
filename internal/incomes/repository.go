@@ -12,6 +12,7 @@ type Repository interface {
 	Create(ctx context.Context, dto CreateIncomeDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Income, error)
 	GetAll(ctx context.Context, from *time.Time, to *time.Time) ([]Income, error)
+	GetByOrderID(ctx context.Context, orderID int) ([]Income, error)
 	Update(ctx context.Context, id int, dto UpdateIncomeDTO) error
 	Delete(ctx context.Context, id int) error
 }
@@ -29,7 +30,7 @@ func NewRepository(db *sql.DB) Repository {
 func (r *repository) Create(ctx context.Context, dto CreateIncomeDTO) (int, error) {
 	query := `
 	INSERT INTO income (order_id, amount, date)
-	VALUES ($1, $2, NOW())
+	VALUES ($1, $2, datetime('now'))
 	RETURNING id;
 	`
 
@@ -118,6 +119,42 @@ func (r *repository) GetAll(ctx context.Context, from *time.Time, to *time.Time)
 	return incomes, nil
 }
 
+// -------------------- GET BY ORDER ID --------------------
+
+func (r *repository) GetByOrderID(ctx context.Context, orderID int) ([]Income, error) {
+	query := `
+	SELECT 
+		id, order_id, amount, date,
+		created_at, updated_at
+	FROM income
+	WHERE order_id = $1
+	ORDER BY date DESC;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	incomes := []Income{}
+
+	for rows.Next() {
+		var i Income
+		err := rows.Scan(
+			&i.ID, &i.OrderID, &i.Amount, &i.Date,
+			&i.CreatedAt, &i.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		incomes = append(incomes, i)
+	}
+
+	return incomes, nil
+}
+
 // -------------------- UPDATE --------------------
 
 func (r *repository) Update(ctx context.Context, id int, dto UpdateIncomeDTO) error {
@@ -125,7 +162,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateIncomeDTO) er
 	UPDATE income SET
 		order_id = COALESCE($1, order_id),
 		amount = COALESCE($2, amount),
-		updated_at = NOW()
+		updated_at = datetime('now')
 	WHERE id = $3;
 	`
 

@@ -1,7 +1,8 @@
+-- SQLite version: Financial percentages table
 CREATE TABLE financial_percentages (
-    id SERIAL PRIMARY KEY,
-    reinvestment_percentage NUMERIC(5,2) NOT NULL,
-    supplies_percentage NUMERIC(5,2) NOT NULL,
-    profit_percentage NUMERIC(5,2) NOT NULL,
-    effective_start_date DATE NOT NULL
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reinvestment_percentage REAL NOT NULL,
+    supplies_percentage REAL NOT NULL,
+    profit_percentage REAL NOT NULL,
+    effective_start_date TEXT NOT NULL
 );

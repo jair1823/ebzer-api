@@ -1,29 +1,17 @@
-CREATE TYPE order_status AS ENUM (
-    'pending',
-    'completed',
-    'paid'
-);
-
-CREATE TYPE delivery_type AS ENUM (
-    'pickup',
-    'shipping',
-    'delivery'
-);
-
+-- SQLite version: Orders table
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     description TEXT NOT NULL,
-    amount_charged NUMERIC(10,2) NOT NULL,
-    status order_status NOT NULL DEFAULT 'pending',
-    entry_date TIMESTAMP NOT NULL DEFAULT NOW(),
-    estimated_delivery_date TIMESTAMP NULL,
-    delivery_type delivery_type NOT NULL DEFAULT 'pickup',
-    paid_50_percent BOOLEAN NOT NULL DEFAULT FALSE,
-    client_name VARCHAR(255) NULL,
-    client_phone VARCHAR(20) NULL,
+    amount_charged REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed', 'in_progress', 'ready', 'shipped', 'delivered', 'cancelled')),
+    entry_date TEXT NOT NULL DEFAULT (datetime('now')),
+    estimated_delivery_date TEXT,
+    delivery_type TEXT NOT NULL DEFAULT 'pickup' CHECK(delivery_type IN ('pickup', 'shipping', 'delivery')),
+    client_name TEXT,
+    client_phone TEXT,
     notes TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Recommended indexes:

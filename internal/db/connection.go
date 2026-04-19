@@ -6,26 +6,19 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type ConnectConfig struct {
-	User     string
-	Password string
-	Host     string
-	Port     string
-	Database string
+	DatabasePath string
 }
 
 func GetConfig() ConnectConfig {
 	config := ConnectConfig{
-		User:     getEnvOrDefault("PGUSER", "postgres"),
-		Password: getEnvOrDefault("PGPASSWORD", ""),
-		Host:     getEnvOrDefault("PGHOST", "localhost"),
-		Port:     getEnvOrDefault("PGPORT", "5432"),
-		Database: getEnvOrDefault("PGDATABASE", "postgres"),
+		DatabasePath: getEnvOrDefault("SQLITE_DB_PATH", "./data/ebzer.db"),
 	}
 	return config
 }
@@ -38,17 +31,8 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 func (c ConnectConfig) Validate() error {
-	if c.User == "" {
-		return fmt.Errorf("PGUSER cannot be empty")
-	}
-	if c.Host == "" {
-		return fmt.Errorf("PGHOST cannot be empty")
-	}
-	if c.Port == "" {
-		return fmt.Errorf("PGPORT cannot be empty")
-	}
-	if c.Database == "" {
-		return fmt.Errorf("PGDATABASE cannot be empty")
+	if c.DatabasePath == "" {
+		return fmt.Errorf("SQLITE_DB_PATH cannot be empty")
 	}
 	return nil
 }
@@ -71,7 +55,7 @@ func ConnectWithRetry(maxRetries int, delaySeconds time.Duration) (*sql.DB, erro
 
 		db, err = connect(config)
 		if err == nil {
-			log.Println("Successful connection to PostgreSQL")
+			log.Println("✅ Successful connection to SQLite")
 			return db, nil
 		}
 
@@ -83,7 +67,7 @@ func ConnectWithRetry(maxRetries int, delaySeconds time.Duration) (*sql.DB, erro
 		}
 	}
 
-	return nil, fmt.Errorf("Could not connect after %d attempts: %v", maxRetries, err)
+	return nil, fmt.Errorf("could not connect after %d attempts: %v", maxRetries, err)
 }
 
 // Connect tries to connect once
@@ -101,35 +85,39 @@ func Connect() (*sql.DB, error) {
 
 // connect is the internal function that performs the connection
 func connect(config ConnectConfig) (*sql.DB, error) {
-	url := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		config.User,
-		config.Password,
-		config.Host,
-		config.Port,
-		config.Database,
-	)
+	// Ensure directory exists
+	dir := filepath.Dir(config.DatabasePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("error creating database directory: %w", err)
+	}
 
-	log.Printf("Connecting to: postgres://%s:***@%s:%s/%s", config.User, config.Host, config.Port, config.Database)
+	log.Printf("Connecting to SQLite: %s", config.DatabasePath)
 
-	// Open connection with timeout
-	db, err := sql.Open("pgx", url)
+	// Open SQLite connection
+	// _loc=auto enables automatic timestamp parsing from TEXT columns
+	db, err := sql.Open("sqlite3", config.DatabasePath+"?_foreign_keys=on&_journal_mode=WAL&_loc=auto")
 	if err != nil {
 		return nil, fmt.Errorf("error opening connection: %w", err)
 	}
 
-	// Set connection configuration
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	// SQLite specific configuration
+	db.SetMaxOpenConns(1) // SQLite works best with single connection
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
 
-	// Verify connection with timeout
+	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("error verifying connection (ping): %w", err)
+	}
+
+	// Enable foreign keys (extra safety)
+	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("error enabling foreign keys: %w", err)
 	}
 
 	return db, nil

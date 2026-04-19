@@ -25,6 +25,16 @@ func main() {
 	defer conn.Close()
 
 	// ---------------------------------------
+	// Run Migrations
+	// ---------------------------------------
+
+	log.Println("🔄 Running database migrations...")
+	if err := db.RunMigrations(conn, "internal/db/migrations"); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+	log.Println("✅ Migrations completed successfully")
+
+	// ---------------------------------------
 	// Fiber Config
 	// ---------------------------------------
 
@@ -80,7 +90,8 @@ func main() {
 	// ---------------------------------------
 
 	ordersRepo := orders.NewRepository(conn)
-	ordersService := orders.NewService(ordersRepo)
+	incomesRepo := incomes.NewRepository(conn)
+	ordersService := orders.NewService(ordersRepo, incomesRepo)
 	ordersHandler := orders.NewHandler(ordersService)
 
 	api := app.Group("/api")
@@ -89,9 +100,8 @@ func main() {
 	ordersHandler.RegisterRoutes(ordersGroup)
 
 	// ---------------------------------------
-	// Orders API Setup
+	// Incomes API Setup
 	// ---------------------------------------
-	incomesRepo := incomes.NewRepository(conn)
 	incomesService := incomes.NewService(incomesRepo)
 	incomesHandler := incomes.NewHandler(incomesService)
 

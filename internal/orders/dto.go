@@ -40,7 +40,6 @@ type CreateOrderDTO struct {
 	ClientName            *string       `json:"client_name"`
 	ClientPhone           *string       `json:"client_phone"`
 	Notes                 *string       `json:"notes"`
-	Paid50Percent         *bool         `json:"paid_50_percent"`
 }
 
 type UpdateOrderDTO struct {
@@ -52,5 +51,4 @@ type UpdateOrderDTO struct {
 	ClientName            *string        `json:"client_name"`
 	ClientPhone           *string        `json:"client_phone"`
 	Notes                 *string        `json:"notes"`
-	Paid50Percent         *bool          `json:"paid_50_percent"`
 }

@@ -29,8 +29,8 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 	query := `
-	INSERT INTO orders (description, amount_charged, status, estimated_delivery_date, delivery_type, notes, paid_50_percent, client_name, client_phone)
-	VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, FALSE) , $8, $9)
+	INSERT INTO orders (description, amount_charged, status, estimated_delivery_date, delivery_type, notes, client_name, client_phone)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	RETURNING id;
 	`
 
@@ -42,7 +42,6 @@ func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error
 		dto.EstimatedDeliveryDate,
 		dto.DeliveryType,
 		dto.Notes,
-		dto.Paid50Percent,
 		dto.ClientName,
 		dto.ClientPhone,
 	).Scan(&id)
@@ -57,7 +56,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	SELECT 
 		id, description, amount_charged, status, entry_date,
 		estimated_delivery_date, delivery_type, notes,
-		paid_50_percent, client_name, client_phone,
+		client_name, client_phone,
 		created_at, updated_at
 	FROM orders
 	WHERE id = $1;
@@ -67,7 +66,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	err := row.Scan(
 		&o.ID, &o.Description, &o.AmountCharged, &o.Status, &o.EntryDate,
 		&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
-		&o.Paid50Percent, &o.ClientName, &o.ClientPhone,
+		&o.ClientName, &o.ClientPhone,
 		&o.CreatedAt, &o.UpdatedAt,
 	)
 
@@ -85,7 +84,7 @@ func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time
 	SELECT 
 		id, description, amount_charged, status, entry_date,
 		estimated_delivery_date, delivery_type, notes,
-		paid_50_percent, client_name, client_phone,
+		client_name, client_phone,
 		created_at, updated_at
 	FROM orders
 	WHERE 1 = 1
@@ -127,7 +126,7 @@ func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time
 		err := rows.Scan(
 			&o.ID, &o.Description, &o.AmountCharged, &o.Status, &o.EntryDate,
 			&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
-			&o.Paid50Percent, &o.ClientName, &o.ClientPhone,
+			&o.ClientName, &o.ClientPhone,
 			&o.CreatedAt, &o.UpdatedAt,
 		)
 		if err != nil {
@@ -151,11 +150,10 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 		estimated_delivery_date = COALESCE($4, estimated_delivery_date),
 		delivery_type = COALESCE($5, delivery_type),
 		notes = COALESCE($6, notes),
-		paid_50_percent = COALESCE($7, paid_50_percent),
-		client_name = COALESCE($8, client_name),
-		client_phone = COALESCE($9, client_phone),
-		updated_at = NOW()
-	WHERE id = $10;
+		client_name = COALESCE($7, client_name),
+		client_phone = COALESCE($8, client_phone),
+		updated_at = datetime('now')
+	WHERE id = $9;
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -165,7 +163,6 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 		dto.EstimatedDeliveryDate,
 		dto.DeliveryType,
 		dto.Notes,
-		dto.Paid50Percent,
 		dto.ClientName,
 		dto.ClientPhone,
 		id,
@@ -199,7 +196,7 @@ func (r *repository) Delete(ctx context.Context, id int) error {
 
 // -------------------- FINISH ORDER --------------------
 func (r *repository) FinishOrder(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status = 'paid', updated_at = NOW() WHERE id = $1", id)
+	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status = 'delivered', updated_at = datetime('now') WHERE id = $1", id)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	router.Post("/", h.Create)
 	router.Get("/", h.GetAll)
 	router.Get("/:id", h.GetByID)
+	router.Get("/:id/payment-status", h.GetPaymentStatus)
 	router.Put("/:id", h.Update)
 	router.Post("/:id/finish", h.FinishOrder)
 	router.Delete("/:id", h.Delete)
@@ -137,4 +138,19 @@ func (h *Handler) FinishOrder(c *fiber.Ctx) error {
 		return fiber.NewError(500, err.Error())
 	}
 	return c.JSON(fiber.Map{"finished": true})
+}
+
+// -------------------- GET PAYMENT STATUS --------------------
+func (h *Handler) GetPaymentStatus(c *fiber.Ctx) error {
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	paymentStatus, err := h.service.GetPaymentStatus(c.Context(), id)
+	if err != nil {
+		if err.Error() == "order not found" {
+			return fiber.NewError(404, "order not found")
+		}
+		return fiber.NewError(500, err.Error())
+	}
+
+	return c.JSON(paymentStatus)
 }

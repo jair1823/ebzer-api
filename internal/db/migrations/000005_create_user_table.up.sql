@@ -1,10 +1,9 @@
-CREATE TYPE user_role AS ENUM ('admin', 'employee');
-
+-- SQLite version: Users table
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role user_role NOT NULL DEFAULT 'employee',
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    role TEXT NOT NULL DEFAULT 'employee' CHECK(role IN ('admin', 'employee')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
