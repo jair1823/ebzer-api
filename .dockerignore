@@ -1,0 +1,7 @@
+.git
+.gitignore
+.server.pid
+data
+server.log
+README.md
+SETUP.md
