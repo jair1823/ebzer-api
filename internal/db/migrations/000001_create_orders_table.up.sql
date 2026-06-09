@@ -21,9 +21,9 @@ CREATE INDEX idx_order_statuses_name ON order_statuses (name);
 -- 2) Seed system statuses (three base statuses)
 INSERT INTO order_statuses (name, display_name, color, order_position, is_system_status, is_final_status)
 VALUES
-  ('new', 'New', '#3B82F6', 1, 1, 0),
-  ('completed', 'Completed', '#10B981', 100, 1, 1),
-  ('cancelled', 'Cancelled', '#EF4444', 101, 1, 1);
+  ('new', 'Nuevo', '#3B82F6', 1, 1, 0),
+  ('completed', 'Completado', '#10B981', 100, 1, 1),
+  ('cancelled', 'Cancelado', '#EF4444', 101, 1, 1);
 
 -- 4) Create orders table (status_id is the only persisted order status)
 CREATE TABLE orders (
