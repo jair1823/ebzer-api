@@ -44,14 +44,16 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 // -------------------- GET ALL --------------------
 
 func (h *Handler) GetAll(c *fiber.Ctx) error {
-	statusStr := c.Query("status")
+	statusIDStr := c.Query("status_id")
 	from := c.Query("from")
 	to := c.Query("to")
 
-	var status *OrderStatus
-	if statusStr != "" {
-		s := OrderStatus(statusStr)
-		status = &s
+	var statusID *int
+	if statusIDStr != "" {
+		id, err := strconv.Atoi(statusIDStr)
+		if err == nil {
+			statusID = &id
+		}
 	}
 
 	// Solo pasar punteros si los valores no están vacíos
@@ -65,7 +67,7 @@ func (h *Handler) GetAll(c *fiber.Ctx) error {
 		toPtr = &to
 	}
 
-	orders, err := h.service.GetAll(c.Context(), status, fromPtr, toPtr)
+	orders, err := h.service.GetAll(c.Context(), statusID, fromPtr, toPtr)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}

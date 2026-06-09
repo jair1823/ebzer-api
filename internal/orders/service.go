@@ -11,7 +11,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, dto CreateOrderDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Order, error)
-	GetAll(ctx context.Context, status *OrderStatus, from, to *string) ([]Order, error)
+	GetAll(ctx context.Context, statusID *int, from, to *string) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
@@ -39,6 +39,10 @@ func (s *service) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 	if dto.AmountCharged < 0 {
 		return 0, errors.New("amount_charged must be >= 0")
 	}
+	// Default to 'new' system status (id = 1 from seed) if not provided
+	if dto.StatusID == 0 {
+		dto.StatusID = 1
+	}
 	return s.repo.Create(ctx, dto)
 }
 
@@ -50,7 +54,7 @@ func (s *service) GetByID(ctx context.Context, id int) (*Order, error) {
 
 // -------------------- GetAll with filters --------------------
 
-func (s *service) GetAll(ctx context.Context, status *OrderStatus, fromStr, toStr *string) ([]Order, error) {
+func (s *service) GetAll(ctx context.Context, statusID *int, fromStr, toStr *string) ([]Order, error) {
 
 	var from *time.Time
 	var to *time.Time
@@ -73,7 +77,7 @@ func (s *service) GetAll(ctx context.Context, status *OrderStatus, fromStr, toSt
 		to = &t
 	}
 
-	return s.repo.GetAll(ctx, status, from, to)
+	return s.repo.GetAll(ctx, statusID, from, to)
 }
 
 // -------------------- Update --------------------

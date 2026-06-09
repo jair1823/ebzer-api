@@ -34,7 +34,7 @@ func (c *CustomFloat64) UnmarshalJSON(data []byte) error {
 type CreateOrderDTO struct {
 	Description           string        `json:"description"`
 	AmountCharged         CustomFloat64 `json:"amount_charged"`
-	Status                OrderStatus   `json:"status"`
+	StatusID              int           `json:"status_id"`
 	EstimatedDeliveryDate *time.Time    `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType  `json:"delivery_type"`
 	ClientName            *string       `json:"client_name"`
@@ -45,10 +45,37 @@ type CreateOrderDTO struct {
 type UpdateOrderDTO struct {
 	Description           *string        `json:"description"`
 	AmountCharged         *CustomFloat64 `json:"amount_charged"`
-	Status                *OrderStatus   `json:"status"`
+	StatusID              *int           `json:"status_id"`
 	EstimatedDeliveryDate *time.Time     `json:"estimated_delivery_date"`
 	DeliveryType          *DeliveryType  `json:"delivery_type"`
 	ClientName            *string        `json:"client_name"`
 	ClientPhone           *string        `json:"client_phone"`
 	Notes                 *string        `json:"notes"`
+}
+
+// ---- Order Status DTOs ----
+
+type CreateOrderStatusDTO struct {
+	Name          string `json:"name"`
+	DisplayName   string `json:"display_name"`
+	Color         string `json:"color"`
+	OrderPosition int    `json:"order_position"`
+	IsFinalStatus bool   `json:"is_final_status"`
+}
+
+type UpdateOrderStatusDTO struct {
+	DisplayName   *string `json:"display_name"`
+	Color         *string `json:"color"`
+	OrderPosition *int    `json:"order_position"`
+	IsFinalStatus *bool   `json:"is_final_status"`
+	IsActive      *bool   `json:"is_active"`
+}
+
+type ReorderStatusesDTO struct {
+	StatusOrders []StatusOrderItem `json:"status_orders"`
+}
+
+type StatusOrderItem struct {
+	ID       int `json:"id"`
+	Position int `json:"position"`
 }

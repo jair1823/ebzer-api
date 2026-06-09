@@ -4,17 +4,7 @@ import (
 	"creaciones-api/internal/db"
 )
 
-type OrderStatus string
 type DeliveryType string
-
-const (
-	StatusConfirmed  OrderStatus = "confirmed"
-	StatusInProgress OrderStatus = "in_progress"
-	StatusReady      OrderStatus = "ready"
-	StatusShipped    OrderStatus = "shipped"
-	StatusDelivered  OrderStatus = "delivered"
-	StatusCancelled  OrderStatus = "cancelled"
-)
 
 const (
 	DeliveryPickup   DeliveryType = "pickup"
@@ -22,11 +12,26 @@ const (
 	DeliveryDelivery DeliveryType = "delivery"
 )
 
+// OrderStatus represents a configurable status stored in order_statuses table
+type OrderStatus struct {
+	ID             int     `json:"id"`
+	Name           string  `json:"name"`
+	DisplayName    string  `json:"display_name"`
+	Color          string  `json:"color"`
+	OrderPosition  int     `json:"order_position"`
+	IsSystemStatus bool    `json:"is_system_status"`
+	IsFinalStatus  bool    `json:"is_final_status"`
+	IsActive       bool    `json:"is_active"`
+	CreatedAt      db.Time `json:"created_at"`
+	UpdatedAt      db.Time `json:"updated_at"`
+}
+
 type Order struct {
 	ID                    int          `json:"id"`
 	Description           string       `json:"description"`
 	AmountCharged         float64      `json:"amount_charged"`
-	Status                OrderStatus  `json:"status"`
+	StatusID              int          `json:"status_id"`
+	Status                *OrderStatus `json:"status,omitempty"`
 	EntryDate             db.Time      `json:"entry_date"`
 	EstimatedDeliveryDate *db.NullTime `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType `json:"delivery_type"`

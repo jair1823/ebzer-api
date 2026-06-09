@@ -90,11 +90,19 @@ func main() {
 	// ---------------------------------------
 
 	ordersRepo := orders.NewRepository(conn)
+	statusRepo := orders.NewStatusRepository(conn)
 	incomesRepo := incomes.NewRepository(conn)
+
+	statusService := orders.NewStatusService(statusRepo)
 	ordersService := orders.NewService(ordersRepo, incomesRepo)
+
+	statusHandler := orders.NewStatusHandler(statusService)
 	ordersHandler := orders.NewHandler(ordersService)
 
 	api := app.Group("/api")
+
+	statusGroup := api.Group("/order-statuses")
+	statusHandler.RegisterRoutes(statusGroup)
 
 	ordersGroup := api.Group("/orders")
 	ordersHandler.RegisterRoutes(ordersGroup)

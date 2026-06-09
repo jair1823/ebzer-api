@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	internaldb "creaciones-api/internal/db"
 )
 
 type Repository interface {
 	Create(ctx context.Context, dto CreateOrderDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Order, error)
-	GetAll(ctx context.Context, status *OrderStatus, from *time.Time, to *time.Time) ([]Order, error)
+	GetAll(ctx context.Context, statusID *int, from *time.Time, to *time.Time) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
@@ -29,7 +31,7 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 	query := `
-	INSERT INTO orders (description, amount_charged, status, estimated_delivery_date, delivery_type, notes, client_name, client_phone)
+	INSERT INTO orders (description, amount_charged, status_id, estimated_delivery_date, delivery_type, notes, client_name, client_phone)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	RETURNING id;
 	`
@@ -38,7 +40,7 @@ func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error
 	err := r.db.QueryRowContext(ctx, query,
 		dto.Description,
 		dto.AmountCharged,
-		dto.Status,
+		dto.StatusID,
 		dto.EstimatedDeliveryDate,
 		dto.DeliveryType,
 		dto.Notes,
@@ -54,64 +56,79 @@ func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error
 func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	row := r.db.QueryRowContext(ctx, `
 	SELECT 
-		id, description, amount_charged, status, entry_date,
-		estimated_delivery_date, delivery_type, notes,
-		client_name, client_phone,
-		created_at, updated_at
-	FROM orders
-	WHERE id = $1;
+		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
+		o.estimated_delivery_date, o.delivery_type, o.notes,
+		o.client_name, o.client_phone,
+		o.created_at, o.updated_at,
+		s.id, s.name, s.display_name, s.color, s.order_position,
+		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at
+	FROM orders o
+	LEFT JOIN order_statuses s ON s.id = o.status_id
+	WHERE o.id = $1;
 	`, id)
 
 	var o Order
+	var status nullableOrderStatus
 	err := row.Scan(
-		&o.ID, &o.Description, &o.AmountCharged, &o.Status, &o.EntryDate,
+		&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
 		&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
 		&o.ClientName, &o.ClientPhone,
 		&o.CreatedAt, &o.UpdatedAt,
+		&status.ID, &status.Name, &status.DisplayName, &status.Color,
+		&status.OrderPosition, &status.IsSystemStatus, &status.IsFinalStatus,
+		&status.IsActive, &status.CreatedAt, &status.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	return &o, err
+	o.Status = status.toOrderStatus()
+
+	return &o, nil
 }
 
 // -------------------- GET ALL (FILTERS) --------------------
 
-func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time.Time, to *time.Time) ([]Order, error) {
+func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time, to *time.Time) ([]Order, error) {
 	query := `
 	SELECT 
-		id, description, amount_charged, status, entry_date,
-		estimated_delivery_date, delivery_type, notes,
-		client_name, client_phone,
-		created_at, updated_at
-	FROM orders
+		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
+		o.estimated_delivery_date, o.delivery_type, o.notes,
+		o.client_name, o.client_phone,
+		o.created_at, o.updated_at,
+		s.id, s.name, s.display_name, s.color, s.order_position,
+		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at
+	FROM orders o
+	LEFT JOIN order_statuses s ON s.id = o.status_id
 	WHERE 1 = 1
 	`
 
 	args := []any{}
 	arg := 1
 
-	if status != nil {
-		query += fmt.Sprintf(" AND status = $%d", arg)
-		args = append(args, *status)
+	if statusID != nil {
+		query += fmt.Sprintf(" AND o.status_id = $%d", arg)
+		args = append(args, *statusID)
 		arg++
 	}
 
 	if from != nil {
-		query += fmt.Sprintf(" AND entry_date >= $%d", arg)
+		query += fmt.Sprintf(" AND o.entry_date >= $%d", arg)
 		args = append(args, *from)
 		arg++
 	}
 
 	if to != nil {
-		query += fmt.Sprintf(" AND entry_date <= $%d", arg)
+		query += fmt.Sprintf(" AND o.entry_date <= $%d", arg)
 		args = append(args, *to)
 		arg++
 	}
 
-	query += " ORDER BY entry_date DESC;"
+	query += " ORDER BY o.entry_date DESC;"
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -123,20 +140,57 @@ func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time
 
 	for rows.Next() {
 		var o Order
-		err := rows.Scan(
-			&o.ID, &o.Description, &o.AmountCharged, &o.Status, &o.EntryDate,
+		var status nullableOrderStatus
+		if err := rows.Scan(
+			&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
 			&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
 			&o.ClientName, &o.ClientPhone,
 			&o.CreatedAt, &o.UpdatedAt,
-		)
-		if err != nil {
+			&status.ID, &status.Name, &status.DisplayName, &status.Color,
+			&status.OrderPosition, &status.IsSystemStatus, &status.IsFinalStatus,
+			&status.IsActive, &status.CreatedAt, &status.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
+
+		o.Status = status.toOrderStatus()
 
 		orders = append(orders, o)
 	}
 
-	return orders, nil
+	return orders, rows.Err()
+}
+
+type nullableOrderStatus struct {
+	ID             sql.NullInt64
+	Name           sql.NullString
+	DisplayName    sql.NullString
+	Color          sql.NullString
+	OrderPosition  sql.NullInt64
+	IsSystemStatus sql.NullInt64
+	IsFinalStatus  sql.NullInt64
+	IsActive       sql.NullInt64
+	CreatedAt      internaldb.NullTime
+	UpdatedAt      internaldb.NullTime
+}
+
+func (s nullableOrderStatus) toOrderStatus() *OrderStatus {
+	if !s.ID.Valid {
+		return nil
+	}
+
+	return &OrderStatus{
+		ID:             int(s.ID.Int64),
+		Name:           s.Name.String,
+		DisplayName:    s.DisplayName.String,
+		Color:          s.Color.String,
+		OrderPosition:  int(s.OrderPosition.Int64),
+		IsSystemStatus: s.IsSystemStatus.Int64 != 0,
+		IsFinalStatus:  s.IsFinalStatus.Int64 != 0,
+		IsActive:       s.IsActive.Int64 != 0,
+		CreatedAt:      internaldb.Time{Time: s.CreatedAt.Time},
+		UpdatedAt:      internaldb.Time{Time: s.UpdatedAt.Time},
+	}
 }
 
 // -------------------- UPDATE --------------------
@@ -146,7 +200,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 	UPDATE orders SET
 		description = COALESCE($1, description),
 		amount_charged = COALESCE($2, amount_charged),
-		status = COALESCE($3, status),
+		status_id = COALESCE($3, status_id),
 		estimated_delivery_date = COALESCE($4, estimated_delivery_date),
 		delivery_type = COALESCE($5, delivery_type),
 		notes = COALESCE($6, notes),
@@ -159,7 +213,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 	result, err := r.db.ExecContext(ctx, query,
 		dto.Description,
 		dto.AmountCharged,
-		dto.Status,
+		dto.StatusID,
 		dto.EstimatedDeliveryDate,
 		dto.DeliveryType,
 		dto.Notes,
@@ -196,7 +250,8 @@ func (r *repository) Delete(ctx context.Context, id int) error {
 
 // -------------------- FINISH ORDER --------------------
 func (r *repository) FinishOrder(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status = 'delivered', updated_at = datetime('now') WHERE id = $1", id)
+	// Set to system final status 'completed'
+	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status_id = (SELECT id FROM order_statuses WHERE name = 'completed'), updated_at = datetime('now') WHERE id = $1", id)
 	if err != nil {
 		return err
 	}
