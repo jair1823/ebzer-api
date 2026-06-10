@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -120,8 +121,13 @@ func main() {
 	// Start Server
 	// ---------------------------------------
 
-	log.Println("🚀 Server running on http://localhost:3000")
-	if err := app.Listen(":3000"); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	log.Printf("Server running on port %s", port)
+	if err := app.Listen(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }
