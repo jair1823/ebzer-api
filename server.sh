@@ -9,8 +9,21 @@ case "$1" in
       echo "❌ El servidor ya está corriendo en puerto 3000"
       exit 1
     fi
+
+    if [ -f .server.pid ]; then
+      PID=$(cat .server.pid)
+      if ! kill -0 "$PID" 2>/dev/null; then
+        rm -f .server.pid
+      fi
+    fi
+
+    if ! command -v gcc >/dev/null 2>&1 && ! command -v cc >/dev/null 2>&1 && ! command -v clang >/dev/null 2>&1 ; then
+      echo "❌ go-sqlite3 requiere cgo y un compilador C (gcc, cc o clang)"
+      echo "💡 En Ubuntu/Debian instala: sudo apt install build-essential"
+      exit 1
+    fi
     
-    nohup go run cmd/server/main.go > server.log 2>&1 &
+    nohup env CGO_ENABLED=1 go run cmd/server/main.go > server.log 2>&1 &
     SERVER_PID=$!
     echo $SERVER_PID > .server.pid
     
@@ -23,6 +36,7 @@ case "$1" in
       echo "📝 Logs en: server.log"
     else
       echo "❌ Error al iniciar el servidor. Ver server.log para detalles."
+      rm -f .server.pid
       exit 1
     fi
     ;;
