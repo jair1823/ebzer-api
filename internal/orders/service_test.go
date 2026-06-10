@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"creaciones-api/internal/incomes"
 )
 
 // fakeRepo implements Repository for tests
@@ -42,30 +40,9 @@ func (f *fakeRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-// fakeIncomeRepo implements incomes.Repository for tests (minimal stubs)
-type fakeIncomeRepo struct{}
-
-func (f *fakeIncomeRepo) Create(ctx context.Context, dto incomes.CreateIncomeDTO) (int, error) {
-	return 0, nil
-}
-func (f *fakeIncomeRepo) GetByID(ctx context.Context, id int) (*incomes.Income, error) {
-	return nil, nil
-}
-func (f *fakeIncomeRepo) GetAll(ctx context.Context, from *time.Time, to *time.Time) ([]incomes.Income, error) {
-	return nil, nil
-}
-func (f *fakeIncomeRepo) GetByOrderID(ctx context.Context, orderID int) ([]incomes.Income, error) {
-	return nil, nil
-}
-func (f *fakeIncomeRepo) Update(ctx context.Context, id int, dto incomes.UpdateIncomeDTO) error {
-	return nil
-}
-func (f *fakeIncomeRepo) Delete(ctx context.Context, id int) error { return nil }
-
 func TestCreate_DefaultsToNew(t *testing.T) {
 	repo := &fakeRepo{}
-	var incRepo fakeIncomeRepo
-	svc := NewService(repo, &incRepo)
+	svc := NewService(repo)
 
 	dto := CreateOrderDTO{
 		Description:   "Test order",
@@ -90,8 +67,7 @@ func TestCreate_DefaultsToNew(t *testing.T) {
 
 func TestFinishOrder_CallsRepo(t *testing.T) {
 	repo := &fakeRepo{}
-	var incRepo fakeIncomeRepo
-	svc := NewService(repo, &incRepo)
+	svc := NewService(repo)
 
 	result, err := svc.FinishOrder(context.Background(), 7)
 	if err != nil {

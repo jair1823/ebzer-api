@@ -95,7 +95,7 @@ func main() {
 	incomesRepo := incomes.NewRepository(conn)
 
 	statusService := orders.NewStatusService(statusRepo)
-	ordersService := orders.NewService(ordersRepo, incomesRepo)
+	ordersService := orders.NewService(ordersRepo)
 
 	statusHandler := orders.NewStatusHandler(statusService)
 	ordersHandler := orders.NewHandler(ordersService)

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"creaciones-api/internal/incomes"
 )
 
 type Service interface {
@@ -19,14 +17,12 @@ type Service interface {
 }
 
 type service struct {
-	repo       Repository
-	incomeRepo incomes.Repository
+	repo Repository
 }
 
-func NewService(repo Repository, incomeRepo incomes.Repository) Service {
+func NewService(repo Repository) Service {
 	return &service{
-		repo:       repo,
-		incomeRepo: incomeRepo,
+		repo: repo,
 	}
 }
 
@@ -110,30 +106,5 @@ func (s *service) GetPaymentStatus(ctx context.Context, orderID int) (*PaymentSt
 		return nil, errors.New("order not found")
 	}
 
-	// Get all incomes for this order
-	orderIncomes, err := s.incomeRepo.GetByOrderID(ctx, orderID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Calculate total paid
-	totalPaid := 0.0
-	for _, income := range orderIncomes {
-		totalPaid += income.Amount
-	}
-
-	// Calculate remaining and percentage
-	remaining := order.AmountCharged - totalPaid
-	percentagePaid := 0.0
-	if order.AmountCharged > 0 {
-		percentagePaid = (totalPaid / order.AmountCharged) * 100
-	}
-
-	return &PaymentStatus{
-		TotalPaid:      totalPaid,
-		AmountCharged:  order.AmountCharged,
-		Remaining:      remaining,
-		PercentagePaid: percentagePaid,
-		IsFullyPaid:    totalPaid >= order.AmountCharged,
-	}, nil
+	return order.PaymentStatus, nil
 }

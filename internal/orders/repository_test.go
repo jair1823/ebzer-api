@@ -118,6 +118,58 @@ func TestRepositoryGetAllPopulatesStatusWithSingleConnection(t *testing.T) {
 	}
 }
 
+func TestRepositoryGetAllPopulatesPaymentStatus(t *testing.T) {
+	db, repo := newTestOrderRepository(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(ctx, "INSERT INTO income (order_id, amount) VALUES (1, 10.00)"); err != nil {
+		t.Fatalf("seed income: %v", err)
+	}
+
+	orders, err := repo.GetAll(ctx, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GetAll returned error: %v", err)
+	}
+
+	byID := map[int]Order{}
+	for _, order := range orders {
+		byID[order.ID] = order
+	}
+
+	first := byID[1]
+	if first.PaymentStatus == nil {
+		t.Fatal("expected payment status")
+	}
+	if first.PaymentStatus.TotalPaid != 10.00 {
+		t.Fatalf("expected total paid 10.00, got %.2f", first.PaymentStatus.TotalPaid)
+	}
+	if first.PaymentStatus.AmountCharged != 25.50 {
+		t.Fatalf("expected amount charged 25.50, got %.2f", first.PaymentStatus.AmountCharged)
+	}
+	if first.PaymentStatus.Remaining != 15.50 {
+		t.Fatalf("expected remaining 15.50, got %.2f", first.PaymentStatus.Remaining)
+	}
+	if first.PaymentStatus.PercentagePaid == 0 {
+		t.Fatal("expected payment percentage greater than 0")
+	}
+	if first.PaymentStatus.IsFullyPaid {
+		t.Fatal("expected order not to be fully paid")
+	}
+
+	second := byID[2]
+	if second.PaymentStatus == nil {
+		t.Fatal("expected payment status for unpaid order")
+	}
+	if second.PaymentStatus.TotalPaid != 0 {
+		t.Fatalf("expected unpaid order total paid 0, got %.2f", second.PaymentStatus.TotalPaid)
+	}
+	if second.PaymentStatus.Remaining != 80.00 {
+		t.Fatalf("expected unpaid order remaining 80.00, got %.2f", second.PaymentStatus.Remaining)
+	}
+}
+
 func TestRepositoryGetAllFiltersByStatusIDAndReturnsEmptyList(t *testing.T) {
 	_, repo := newTestOrderRepository(t)
 
@@ -164,6 +216,12 @@ func TestRepositoryGetByIDPopulatesStatusWithJoin(t *testing.T) {
 	}
 	if order.Status.Name != "new" {
 		t.Fatalf("expected status new, got %q", order.Status.Name)
+	}
+	if order.PaymentStatus == nil {
+		t.Fatal("expected payment status")
+	}
+	if order.PaymentStatus.AmountCharged != 25.50 {
+		t.Fatalf("expected amount charged 25.50, got %.2f", order.PaymentStatus.AmountCharged)
 	}
 }
 

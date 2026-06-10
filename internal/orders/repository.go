@@ -61,14 +61,21 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 		o.client_name, o.client_phone,
 		o.paid_at, o.created_at, o.updated_at,
 		s.id, s.name, s.display_name, s.color, s.order_position,
-		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at
+		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at,
+		COALESCE(p.total_paid, 0)
 	FROM orders o
 	LEFT JOIN order_statuses s ON s.id = o.status_id
+	LEFT JOIN (
+		SELECT order_id, SUM(amount) AS total_paid
+		FROM income
+		GROUP BY order_id
+	) p ON p.order_id = o.id
 	WHERE o.id = $1;
 	`, id)
 
 	var o Order
 	var status nullableOrderStatus
+	var totalPaid float64
 	err := row.Scan(
 		&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
 		&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
@@ -77,6 +84,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 		&status.ID, &status.Name, &status.DisplayName, &status.Color,
 		&status.OrderPosition, &status.IsSystemStatus, &status.IsFinalStatus,
 		&status.IsActive, &status.CreatedAt, &status.UpdatedAt,
+		&totalPaid,
 	)
 
 	if err == sql.ErrNoRows {
@@ -87,6 +95,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	}
 
 	o.Status = status.toOrderStatus()
+	o.PaymentStatus = paymentStatusFromTotals(o.AmountCharged, totalPaid)
 
 	return &o, nil
 }
@@ -101,9 +110,15 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 		o.client_name, o.client_phone,
 		o.paid_at, o.created_at, o.updated_at,
 		s.id, s.name, s.display_name, s.color, s.order_position,
-		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at
+		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at,
+		COALESCE(p.total_paid, 0)
 	FROM orders o
 	LEFT JOIN order_statuses s ON s.id = o.status_id
+	LEFT JOIN (
+		SELECT order_id, SUM(amount) AS total_paid
+		FROM income
+		GROUP BY order_id
+	) p ON p.order_id = o.id
 	WHERE 1 = 1
 	`
 
@@ -141,6 +156,7 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 	for rows.Next() {
 		var o Order
 		var status nullableOrderStatus
+		var totalPaid float64
 		if err := rows.Scan(
 			&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
 			&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
@@ -149,11 +165,13 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 			&status.ID, &status.Name, &status.DisplayName, &status.Color,
 			&status.OrderPosition, &status.IsSystemStatus, &status.IsFinalStatus,
 			&status.IsActive, &status.CreatedAt, &status.UpdatedAt,
+			&totalPaid,
 		); err != nil {
 			return nil, err
 		}
 
 		o.Status = status.toOrderStatus()
+		o.PaymentStatus = paymentStatusFromTotals(o.AmountCharged, totalPaid)
 
 		orders = append(orders, o)
 	}

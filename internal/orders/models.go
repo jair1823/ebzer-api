@@ -27,20 +27,21 @@ type OrderStatus struct {
 }
 
 type Order struct {
-	ID                    int          `json:"id"`
-	Description           string       `json:"description"`
-	AmountCharged         float64      `json:"amount_charged"`
-	StatusID              int          `json:"status_id"`
-	Status                *OrderStatus `json:"status,omitempty"`
-	EntryDate             db.Time      `json:"entry_date"`
-	EstimatedDeliveryDate *db.NullTime `json:"estimated_delivery_date"`
-	DeliveryType          DeliveryType `json:"delivery_type"`
-	ClientName            *string      `json:"client_name"`
-	ClientPhone           *string      `json:"client_phone"`
-	Notes                 *string      `json:"notes"`
-	PaidAt                *db.NullTime `json:"paid_at"`
-	CreatedAt             db.Time      `json:"created_at"`
-	UpdatedAt             db.Time      `json:"updated_at"`
+	ID                    int            `json:"id"`
+	Description           string         `json:"description"`
+	AmountCharged         float64        `json:"amount_charged"`
+	StatusID              int            `json:"status_id"`
+	Status                *OrderStatus   `json:"status,omitempty"`
+	PaymentStatus         *PaymentStatus `json:"payment_status,omitempty"`
+	EntryDate             db.Time        `json:"entry_date"`
+	EstimatedDeliveryDate *db.NullTime   `json:"estimated_delivery_date"`
+	DeliveryType          DeliveryType   `json:"delivery_type"`
+	ClientName            *string        `json:"client_name"`
+	ClientPhone           *string        `json:"client_phone"`
+	Notes                 *string        `json:"notes"`
+	PaidAt                *db.NullTime   `json:"paid_at"`
+	CreatedAt             db.Time        `json:"created_at"`
+	UpdatedAt             db.Time        `json:"updated_at"`
 }
 
 type PaymentStatus struct {
@@ -49,6 +50,26 @@ type PaymentStatus struct {
 	Remaining      float64 `json:"remaining"`
 	PercentagePaid float64 `json:"percentage_paid"`
 	IsFullyPaid    bool    `json:"is_fully_paid"`
+}
+
+func paymentStatusFromTotals(amountCharged float64, totalPaid float64) *PaymentStatus {
+	remaining := amountCharged - totalPaid
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	percentagePaid := 0.0
+	if amountCharged > 0 {
+		percentagePaid = (totalPaid / amountCharged) * 100
+	}
+
+	return &PaymentStatus{
+		TotalPaid:      totalPaid,
+		AmountCharged:  amountCharged,
+		Remaining:      remaining,
+		PercentagePaid: percentagePaid,
+		IsFullyPaid:    remaining == 0 && totalPaid > 0,
+	}
 }
 
 type FinishOrderResult struct {
