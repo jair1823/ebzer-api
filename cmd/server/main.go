@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"creaciones-api/internal/agenda"
+	"creaciones-api/internal/auth"
 	"creaciones-api/internal/db"
 	"creaciones-api/internal/incomes"
 	"creaciones-api/internal/orders"
@@ -35,6 +37,23 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 	log.Println("✅ Migrations completed successfully")
+
+	// ---------------------------------------
+	// Auth Setup
+	// ---------------------------------------
+
+	authConfig, err := auth.LoadConfig()
+	if err != nil {
+		log.Fatalf("Invalid auth configuration: %v", err)
+	}
+	authRepo := auth.NewRepository(conn)
+	jwtService := auth.NewJWTService(authConfig.JWTSecret)
+	authService := auth.NewService(authRepo, jwtService, authConfig)
+	authHandler := auth.NewHandler(authService)
+
+	if err := authService.BootstrapInitialAdmin(context.Background()); err != nil {
+		log.Fatalf("Failed to bootstrap initial admin: %v", err)
+	}
 
 	// ---------------------------------------
 	// Fiber Config
@@ -116,11 +135,38 @@ func main() {
 		})
 	}
 
+	authGroup := api.Group("/auth")
+	authGroup.Post("/login", authHandler.Login)
+	authGroup.Post("/refresh", authHandler.Refresh)
+
+	api.Use(auth.RequireAuth(jwtService, authRepo))
+
+	authGroup.Get("/me", authHandler.Me)
+	authGroup.Post("/logout", authHandler.Logout)
+
+	usersGroup := api.Group("/users", auth.RequireRole(auth.RoleAdmin))
+	usersGroup.Get("/", authHandler.ListUsers)
+	usersGroup.Post("/", authHandler.CreateUser)
+	usersGroup.Get("/:id", authHandler.GetUser)
+	usersGroup.Put("/:id", authHandler.UpdateUser)
+	usersGroup.Delete("/:id", authHandler.DeactivateUser)
+
 	statusGroup := api.Group("/order-statuses")
-	statusHandler.RegisterRoutes(statusGroup)
+	statusGroup.Put("/reorder", auth.RequireRole(auth.RoleAdmin), statusHandler.Reorder)
+	statusGroup.Get("/", statusHandler.GetAll)
+	statusGroup.Post("/", auth.RequireRole(auth.RoleAdmin), statusHandler.Create)
+	statusGroup.Get("/:id", statusHandler.GetByID)
+	statusGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), statusHandler.Update)
+	statusGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), statusHandler.Deactivate)
 
 	ordersGroup := api.Group("/orders")
-	ordersHandler.RegisterRoutes(ordersGroup)
+	ordersGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), ordersHandler.Create)
+	ordersGroup.Get("/", ordersHandler.GetAll)
+	ordersGroup.Get("/:id", ordersHandler.GetByID)
+	ordersGroup.Get("/:id/payment-status", ordersHandler.GetPaymentStatus)
+	ordersGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), ordersHandler.Update)
+	ordersGroup.Post("/:id/finish", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), ordersHandler.FinishOrder)
+	ordersGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), ordersHandler.Delete)
 
 	// ---------------------------------------
 	// Incomes API Setup
@@ -129,7 +175,11 @@ func main() {
 	incomesHandler := incomes.NewHandler(incomesService)
 
 	incomesGroup := api.Group("/incomes")
-	incomesHandler.RegisterRoutes(incomesGroup)
+	incomesGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Create)
+	incomesGroup.Get("/", incomesHandler.GetAll)
+	incomesGroup.Get("/:id", incomesHandler.GetByID)
+	incomesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Update)
+	incomesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Delete)
 
 	// ---------------------------------------
 	// Agenda API Setup
@@ -139,7 +189,13 @@ func main() {
 	agendaHandler := agenda.NewHandler(agendaService)
 
 	agendaGroup := api.Group("/agenda-items")
-	agendaHandler.RegisterRoutes(agendaGroup)
+	agendaGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), agendaHandler.Create)
+	agendaGroup.Get("/", agendaHandler.GetAll)
+	agendaGroup.Get("/:id", agendaHandler.GetByID)
+	agendaGroup.Patch("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), agendaHandler.Update)
+	agendaGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), agendaHandler.Delete)
+	agendaGroup.Patch("/:id/complete", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), agendaHandler.Complete)
+	agendaGroup.Patch("/:id/archive", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), agendaHandler.Archive)
 
 	// ---------------------------------------
 	// Start Server

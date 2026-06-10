@@ -81,6 +81,12 @@ Las migraciones se ejecutan automáticamente al iniciar el servidor.
 - `GET /ping` - Verificar servidor
 - `GET /dbping` - Verificar base de datos
 
+### Auth
+- `POST /api/auth/login` - Iniciar sesión
+- `POST /api/auth/refresh` - Renovar access token
+- `GET /api/auth/me` - Ver usuario autenticado
+- `POST /api/auth/logout` - Cerrar sesión
+
 ### Orders (Pedidos)
 - `POST /api/orders` - Crear pedido
 - `GET /api/orders` - Listar pedidos
@@ -105,8 +111,30 @@ Las migraciones se ejecutan automáticamente al iniciar el servidor.
 # Ruta de la base de datos (opcional)
 export SQLITE_DB_PATH=./data/ebzer.db
 
+# Autenticación
+export JWT_SECRET=change-this-secret
+export INITIAL_ADMIN_NAME="Admin"
+export INITIAL_ADMIN_EMAIL=admin@example.com
+export INITIAL_ADMIN_PASSWORD=password123
+
 # Iniciar con configuración personalizada
 SQLITE_DB_PATH=/custom/path.db ./server.sh start
+```
+
+`JWT_SECRET` is required when `APP_ENV=production` or `RAILWAY_ENVIRONMENT=production`.
+If the `users` table is empty, the server creates the first admin from
+`INITIAL_ADMIN_NAME`, `INITIAL_ADMIN_EMAIL`, and `INITIAL_ADMIN_PASSWORD`.
+Business routes under `/api` require `Authorization: Bearer <access_token>`.
+
+Required Railway variables:
+
+```bash
+APP_ENV=production
+JWT_SECRET=<strong random secret>
+INITIAL_ADMIN_NAME=<owner name>
+INITIAL_ADMIN_EMAIL=<owner email>
+INITIAL_ADMIN_PASSWORD=<strong initial password>
+SQLITE_DB_PATH=/app/data/ebzer.db
 ```
 
 ## 🐛 Solución de Problemas

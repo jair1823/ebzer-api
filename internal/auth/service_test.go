@@ -1,0 +1,188 @@
+package auth
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+)
+
+type fakeRepository struct {
+	users map[int]*User
+	next  int
+}
+
+func newFakeRepository() *fakeRepository {
+	return &fakeRepository{
+		users: map[int]*User{},
+		next:  1,
+	}
+}
+
+func (f *fakeRepository) Count(ctx context.Context) (int, error) {
+	return len(f.users), nil
+}
+
+func (f *fakeRepository) Create(ctx context.Context, req CreateUserRequest, passwordHash string) (int, error) {
+	id := f.next
+	f.next++
+	f.users[id] = &User{
+		ID:           id,
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: passwordHash,
+		Role:         req.Role,
+		IsActive:     true,
+	}
+	return id, nil
+}
+
+func (f *fakeRepository) GetByID(ctx context.Context, id int) (*User, error) {
+	user := f.users[id]
+	if user == nil {
+		return nil, nil
+	}
+	copy := *user
+	return &copy, nil
+}
+
+func (f *fakeRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
+	for _, user := range f.users {
+		if user.Email == email {
+			copy := *user
+			return &copy, nil
+		}
+	}
+	return nil, nil
+}
+
+func (f *fakeRepository) List(ctx context.Context) ([]User, error) {
+	users := []User{}
+	for _, user := range f.users {
+		users = append(users, *user)
+	}
+	return users, nil
+}
+
+func (f *fakeRepository) Update(ctx context.Context, id int, req UpdateUserRequest, passwordHash *string) error {
+	user := f.users[id]
+	if user == nil {
+		return errors.New("user not found")
+	}
+	if req.Name != nil {
+		user.Name = *req.Name
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+	if req.Role != nil {
+		user.Role = *req.Role
+	}
+	if req.IsActive != nil {
+		user.IsActive = *req.IsActive
+	}
+	if passwordHash != nil {
+		user.PasswordHash = *passwordHash
+	}
+	return nil
+}
+
+func (f *fakeRepository) Deactivate(ctx context.Context, id int) error {
+	user := f.users[id]
+	if user == nil {
+		return errors.New("user not found")
+	}
+	user.IsActive = false
+	return nil
+}
+
+func newTestService(repo Repository) Service {
+	cfg := Config{
+		JWTSecret:  "test-secret",
+		AccessTTL:  time.Minute,
+		RefreshTTL: time.Hour,
+	}
+	return NewService(repo, NewJWTService(cfg.JWTSecret), cfg)
+}
+
+func TestServiceLoginAndRefresh(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newTestService(repo)
+
+	user, err := svc.CreateUser(context.Background(), CreateUserRequest{
+		Name:     "Owner",
+		Email:    "owner@example.com",
+		Password: "password123",
+		Role:     RoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	login, err := svc.Login(context.Background(), LoginRequest{
+		Email:    user.Email,
+		Password: "password123",
+	})
+	if err != nil {
+		t.Fatalf("Login returned error: %v", err)
+	}
+	if login.AccessToken == "" || login.RefreshToken == "" {
+		t.Fatal("expected access and refresh tokens")
+	}
+	if login.User.Role != RoleAdmin {
+		t.Fatalf("expected admin role, got %q", login.User.Role)
+	}
+
+	refresh, err := svc.Refresh(context.Background(), login.RefreshToken)
+	if err != nil {
+		t.Fatalf("Refresh returned error: %v", err)
+	}
+	if refresh.AccessToken == "" {
+		t.Fatal("expected refreshed access token")
+	}
+}
+
+func TestServiceRejectsInvalidPasswordAndInactiveUser(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newTestService(repo)
+
+	user, err := svc.CreateUser(context.Background(), CreateUserRequest{
+		Name:     "Operator",
+		Email:    "operator@example.com",
+		Password: "password123",
+		Role:     RoleOperator,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	if _, err := svc.Login(context.Background(), LoginRequest{
+		Email:    user.Email,
+		Password: "wrong-password",
+	}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials, got %v", err)
+	}
+
+	if err := svc.DeactivateUser(context.Background(), user.ID); err != nil {
+		t.Fatalf("DeactivateUser returned error: %v", err)
+	}
+	if _, err := svc.Login(context.Background(), LoginRequest{
+		Email:    user.Email,
+		Password: "password123",
+	}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected inactive user to be rejected, got %v", err)
+	}
+}
+
+func TestJWTRejectsWrongTokenType(t *testing.T) {
+	jwt := NewJWTService("test-secret")
+	user := &User{ID: 7, Email: "guest@example.com", Role: RoleGuest}
+
+	refreshToken, err := jwt.Generate(user, TokenTypeRefresh, time.Hour)
+	if err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+	if _, err := jwt.Validate(refreshToken, TokenTypeAccess); err == nil {
+		t.Fatal("expected refresh token to be rejected as access token")
+	}
+}
