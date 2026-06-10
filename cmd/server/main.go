@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
+	"creaciones-api/internal/agenda"
 	"creaciones-api/internal/db"
 	"creaciones-api/internal/incomes"
 	"creaciones-api/internal/orders"
@@ -129,6 +130,16 @@ func main() {
 
 	incomesGroup := api.Group("/incomes")
 	incomesHandler.RegisterRoutes(incomesGroup)
+
+	// ---------------------------------------
+	// Agenda API Setup
+	// ---------------------------------------
+	agendaRepo := agenda.NewRepository(conn)
+	agendaService := agenda.NewService(agendaRepo)
+	agendaHandler := agenda.NewHandler(agendaService)
+
+	agendaGroup := api.Group("/agenda-items")
+	agendaHandler.RegisterRoutes(agendaGroup)
 
 	// ---------------------------------------
 	// Start Server
