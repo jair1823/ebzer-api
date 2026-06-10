@@ -53,7 +53,7 @@ func main() {
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization, X-API-Key",
 	}))
 
 	// ---------------------------------------
@@ -101,6 +101,19 @@ func main() {
 	ordersHandler := orders.NewHandler(ordersService)
 
 	api := app.Group("/api")
+	// API key guard — set API_KEY env var to enable; skipped if unset (dev mode)
+	apiKey := os.Getenv("API_KEY")
+	if apiKey != "" {
+		api.Use(func(c *fiber.Ctx) error {
+			key := c.Get("X-API-Key")
+			if key != apiKey {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"error": "Unauthorized",
+				})
+			}
+			return c.Next()
+		})
+	}
 
 	statusGroup := api.Group("/order-statuses")
 	statusHandler.RegisterRoutes(statusGroup)
