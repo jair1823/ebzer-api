@@ -24,6 +24,7 @@ func newTestRepository(t *testing.T) (*sql.DB, Repository) {
 		CREATE TABLE users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
+			username TEXT UNIQUE NOT NULL,
 			email TEXT UNIQUE NOT NULL,
 			password_hash TEXT NOT NULL,
 			role TEXT NOT NULL DEFAULT 'operator' CHECK(role IN ('admin', 'operator', 'guest')),
@@ -47,9 +48,10 @@ func TestRepositoryCreateListUpdateAndDeactivate(t *testing.T) {
 	ctx := context.Background()
 
 	id, err := repo.Create(ctx, CreateUserRequest{
-		Name:  "Owner",
-		Email: "OWNER@EXAMPLE.COM",
-		Role:  RoleAdmin,
+		Name:     "Owner",
+		Username: "OWNER",
+		Email:    "OWNER@EXAMPLE.COM",
+		Role:     RoleAdmin,
 	}, "hash")
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
@@ -59,8 +61,15 @@ func TestRepositoryCreateListUpdateAndDeactivate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByEmail returned error: %v", err)
 	}
-	if user == nil || user.ID != id || user.Email != "owner@example.com" || user.Role != RoleAdmin {
+	if user == nil || user.ID != id || user.Username != "owner" || user.Email != "owner@example.com" || user.Role != RoleAdmin {
 		t.Fatalf("unexpected created user: %#v", user)
+	}
+	user, err = repo.GetByUsername(ctx, "OWNER")
+	if err != nil {
+		t.Fatalf("GetByUsername returned error: %v", err)
+	}
+	if user == nil || user.ID != id {
+		t.Fatalf("expected to find user by username, got %#v", user)
 	}
 	if !user.IsActive {
 		t.Fatal("expected user to be active by default")
@@ -68,9 +77,11 @@ func TestRepositoryCreateListUpdateAndDeactivate(t *testing.T) {
 
 	newRole := RoleGuest
 	newName := "Guest Owner"
+	newUsername := "guest-owner"
 	if err := repo.Update(ctx, id, UpdateUserRequest{
-		Name: &newName,
-		Role: &newRole,
+		Name:     &newName,
+		Username: &newUsername,
+		Role:     &newRole,
 	}, nil); err != nil {
 		t.Fatalf("Update returned error: %v", err)
 	}
@@ -79,7 +90,7 @@ func TestRepositoryCreateListUpdateAndDeactivate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List returned error: %v", err)
 	}
-	if len(users) != 1 || users[0].Name != newName || users[0].Role != RoleGuest {
+	if len(users) != 1 || users[0].Name != newName || users[0].Username != newUsername || users[0].Role != RoleGuest {
 		t.Fatalf("unexpected users list: %#v", users)
 	}
 
@@ -92,5 +103,29 @@ func TestRepositoryCreateListUpdateAndDeactivate(t *testing.T) {
 	}
 	if user == nil || user.IsActive {
 		t.Fatalf("expected deactivated user, got %#v", user)
+	}
+}
+
+func TestRepositoryRejectsDuplicateUsername(t *testing.T) {
+	_, repo := newTestRepository(t)
+	ctx := context.Background()
+
+	_, err := repo.Create(ctx, CreateUserRequest{
+		Name:     "Owner",
+		Username: "owner",
+		Email:    "owner@example.com",
+		Role:     RoleAdmin,
+	}, "hash")
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	if _, err := repo.Create(ctx, CreateUserRequest{
+		Name:     "Other Owner",
+		Username: "OWNER",
+		Email:    "other@example.com",
+		Role:     RoleOperator,
+	}, "hash"); err == nil {
+		t.Fatal("expected duplicate username to fail")
 	}
 }

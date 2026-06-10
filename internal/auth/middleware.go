@@ -30,7 +30,7 @@ func RequireAuth(jwt *JWTService, users Repository) fiber.Handler {
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 		}
-		if user == nil || !user.IsActive || user.Email != claims.Email || user.Role != claims.Role {
+		if user == nil || !user.IsActive || user.Username != claims.Username || user.Role != claims.Role {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 		}
 

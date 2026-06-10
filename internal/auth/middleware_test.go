@@ -14,6 +14,7 @@ func TestRequireAuthAndRole(t *testing.T) {
 	user := &User{
 		ID:       1,
 		Name:     "Operator",
+		Username: "operator",
 		Email:    "operator@example.com",
 		Role:     RoleOperator,
 		IsActive: true,
@@ -61,6 +62,29 @@ func TestRequireAuthAndRole(t *testing.T) {
 	}
 	if res.StatusCode != fiber.StatusForbidden {
 		t.Fatalf("expected 403 for non-admin, got %d", res.StatusCode)
+	}
+
+	user.Username = "changed-operator"
+	req = httptest.NewRequest("GET", "/read", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test returned error: %v", err)
+	}
+	if res.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401 for changed username claim, got %d", res.StatusCode)
+	}
+
+	user.Username = "operator"
+	user.IsActive = false
+	req = httptest.NewRequest("GET", "/read", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test returned error: %v", err)
+	}
+	if res.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401 for inactive user, got %d", res.StatusCode)
 	}
 }
 

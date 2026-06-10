@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrInvalidCredentials = errors.New("invalid username or password")
 	ErrForbidden          = errors.New("forbidden")
 )
 
@@ -50,8 +50,11 @@ func NewService(repo Repository, jwt *JWTService, cfg Config) Service {
 }
 
 func (s *service) Login(ctx context.Context, req LoginRequest) (LoginResponse, error) {
-	email := strings.ToLower(strings.TrimSpace(req.Email))
-	user, err := s.repo.GetByEmail(ctx, email)
+	username := normalizeUsername(req.Username)
+	if username == "" {
+		return LoginResponse{}, ErrInvalidCredentials
+	}
+	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
 		return LoginResponse{}, err
 	}
@@ -89,7 +92,7 @@ func (s *service) Refresh(ctx context.Context, refreshToken string) (RefreshResp
 	if err != nil {
 		return RefreshResponse{}, err
 	}
-	if user == nil || !user.IsActive || user.Email != claims.Email || user.Role != claims.Role {
+	if user == nil || !user.IsActive || user.Username != claims.Username || user.Role != claims.Role {
 		return RefreshResponse{}, ErrInvalidCredentials
 	}
 
@@ -106,6 +109,7 @@ func (s *service) Refresh(ctx context.Context, refreshToken string) (RefreshResp
 
 func (s *service) CreateUser(ctx context.Context, req CreateUserRequest) (*User, error) {
 	req.Name = strings.TrimSpace(req.Name)
+	req.Username = normalizeUsername(req.Username)
 	email, err := normalizeEmail(req.Email)
 	if err != nil {
 		return nil, err
@@ -114,7 +118,7 @@ func (s *service) CreateUser(ctx context.Context, req CreateUserRequest) (*User,
 	if req.Role == "" {
 		req.Role = RoleOperator
 	}
-	if err := validateUserInput(req.Name, req.Email, req.Password, req.Role); err != nil {
+	if err := validateUserInput(req.Name, req.Username, req.Password, req.Role); err != nil {
 		return nil, err
 	}
 
@@ -148,6 +152,13 @@ func (s *service) UpdateUser(ctx context.Context, id int, req UpdateUserRequest)
 			return nil, errors.New("name is required")
 		}
 		req.Name = &v
+	}
+	if req.Username != nil {
+		v := normalizeUsername(*req.Username)
+		if v == "" {
+			return nil, errors.New("username is required")
+		}
+		req.Username = &v
 	}
 	if req.Email != nil {
 		v, err := normalizeEmail(*req.Email)
@@ -192,6 +203,7 @@ func (s *service) BootstrapInitialAdmin(ctx context.Context) error {
 	}
 
 	name := strings.TrimSpace(os.Getenv("INITIAL_ADMIN_NAME"))
+	username := normalizeUsername(os.Getenv("INITIAL_ADMIN_USERNAME"))
 	email := strings.TrimSpace(os.Getenv("INITIAL_ADMIN_EMAIL"))
 	password := os.Getenv("INITIAL_ADMIN_PASSWORD")
 	if name == "" && email == "" && password == "" && !s.isProd {
@@ -201,9 +213,13 @@ func (s *service) BootstrapInitialAdmin(ctx context.Context) error {
 	if name == "" || email == "" || password == "" {
 		return errors.New("INITIAL_ADMIN_NAME, INITIAL_ADMIN_EMAIL, and INITIAL_ADMIN_PASSWORD are required when no users exist")
 	}
+	if username == "" {
+		username = usernameFromEmail(email)
+	}
 
 	user, err := s.CreateUser(ctx, CreateUserRequest{
 		Name:     name,
+		Username: username,
 		Email:    email,
 		Password: password,
 		Role:     RoleAdmin,
@@ -211,7 +227,7 @@ func (s *service) BootstrapInitialAdmin(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create initial admin: %w", err)
 	}
-	log.Printf("Created initial admin user: %s", user.Email)
+	log.Printf("Created initial admin user: %s", user.Username)
 	return nil
 }
 
@@ -227,9 +243,12 @@ func (s *service) issueTokenPair(user *User) (string, string, error) {
 	return accessToken, refreshToken, nil
 }
 
-func validateUserInput(name, email, password string, role Role) error {
+func validateUserInput(name, username, password string, role Role) error {
 	if strings.TrimSpace(name) == "" {
 		return errors.New("name is required")
+	}
+	if strings.TrimSpace(username) == "" {
+		return errors.New("username is required")
 	}
 	if len(password) < 8 {
 		return errors.New("password must be at least 8 characters")
@@ -238,6 +257,18 @@ func validateUserInput(name, email, password string, role Role) error {
 		return errors.New("invalid role")
 	}
 	return nil
+}
+
+func normalizeUsername(username string) string {
+	return strings.ToLower(strings.TrimSpace(username))
+}
+
+func usernameFromEmail(email string) string {
+	at := strings.Index(email, "@")
+	if at <= 0 {
+		return ""
+	}
+	return normalizeUsername(email[:at])
 }
 
 func normalizeEmail(email string) (string, error) {

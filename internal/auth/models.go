@@ -20,6 +20,7 @@ func (r Role) IsValid() bool {
 type User struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
+	Username     string `json:"username"`
 	Email        string `json:"email"`
 	PasswordHash string `json:"-"`
 	Role         Role   `json:"role"`
@@ -31,6 +32,7 @@ type User struct {
 type AuthUser struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
+	Username string `json:"username"`
 	Email    string `json:"email"`
 	Role     Role   `json:"role"`
 	IsActive bool   `json:"is_active"`
@@ -40,6 +42,7 @@ func NewAuthUser(user *User) AuthUser {
 	return AuthUser{
 		ID:       user.ID,
 		Name:     user.Name,
+		Username: user.Username,
 		Email:    user.Email,
 		Role:     user.Role,
 		IsActive: user.IsActive,

@@ -18,12 +18,12 @@ const (
 )
 
 type Claims struct {
-	Subject string `json:"sub"`
-	Email   string `json:"email"`
-	Role    Role   `json:"role"`
-	Type    string `json:"type"`
-	Issued  int64  `json:"iat"`
-	Expires int64  `json:"exp"`
+	Subject  string `json:"sub"`
+	Username string `json:"username"`
+	Role     Role   `json:"role"`
+	Type     string `json:"type"`
+	Issued   int64  `json:"iat"`
+	Expires  int64  `json:"exp"`
 }
 
 type JWTService struct {
@@ -37,12 +37,12 @@ func NewJWTService(secret string) *JWTService {
 func (s *JWTService) Generate(user *User, tokenType string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := Claims{
-		Subject: strconv.Itoa(user.ID),
-		Email:   user.Email,
-		Role:    user.Role,
-		Type:    tokenType,
-		Issued:  now.Unix(),
-		Expires: now.Add(ttl).Unix(),
+		Subject:  strconv.Itoa(user.ID),
+		Username: user.Username,
+		Role:     user.Role,
+		Type:     tokenType,
+		Issued:   now.Unix(),
+		Expires:  now.Add(ttl).Unix(),
 	}
 	return s.sign(claims)
 }
@@ -81,7 +81,7 @@ func (s *JWTService) Validate(token string, expectedType string) (*Claims, error
 	if claims.Expires <= time.Now().Unix() {
 		return nil, errors.New("token expired")
 	}
-	if claims.Subject == "" || claims.Email == "" || !claims.Role.IsValid() {
+	if claims.Subject == "" || claims.Username == "" || !claims.Role.IsValid() {
 		return nil, errors.New("invalid token claims")
 	}
 	return &claims, nil

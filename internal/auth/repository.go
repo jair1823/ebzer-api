@@ -11,6 +11,7 @@ type Repository interface {
 	Create(ctx context.Context, req CreateUserRequest, passwordHash string) (int, error)
 	GetByID(ctx context.Context, id int) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByUsername(ctx context.Context, username string) (*User, error)
 	List(ctx context.Context) ([]User, error)
 	Update(ctx context.Context, id int, req UpdateUserRequest, passwordHash *string) error
 	Deactivate(ctx context.Context, id int) error
@@ -24,7 +25,7 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-const userSelectColumns = `id, name, email, password_hash, role, is_active, created_at, updated_at`
+const userSelectColumns = `id, name, username, email, password_hash, role, is_active, created_at, updated_at`
 
 func scanUser(row interface {
 	Scan(dest ...any) error
@@ -34,6 +35,7 @@ func scanUser(row interface {
 	if err := row.Scan(
 		&user.ID,
 		&user.Name,
+		&user.Username,
 		&user.Email,
 		&user.PasswordHash,
 		&user.Role,
@@ -56,10 +58,10 @@ func (r *repository) Count(ctx context.Context) (int, error) {
 func (r *repository) Create(ctx context.Context, req CreateUserRequest, passwordHash string) (int, error) {
 	var id int
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO users (name, email, password_hash, role)
-		VALUES ($1, LOWER($2), $3, $4)
+		INSERT INTO users (name, username, email, password_hash, role)
+		VALUES ($1, LOWER($2), LOWER($3), $4, $5)
 		RETURNING id;
-	`, req.Name, req.Email, passwordHash, req.Role).Scan(&id)
+	`, req.Name, req.Username, req.Email, passwordHash, req.Role).Scan(&id)
 	return id, err
 }
 
@@ -75,6 +77,15 @@ func (r *repository) GetByID(ctx context.Context, id int) (*User, error) {
 func (r *repository) GetByEmail(ctx context.Context, email string) (*User, error) {
 	user, err := scanUser(r.db.QueryRowContext(ctx,
 		"SELECT "+userSelectColumns+" FROM users WHERE LOWER(email) = LOWER($1)", email))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return user, err
+}
+
+func (r *repository) GetByUsername(ctx context.Context, username string) (*User, error) {
+	user, err := scanUser(r.db.QueryRowContext(ctx,
+		"SELECT "+userSelectColumns+" FROM users WHERE LOWER(username) = LOWER($1)", username))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -119,13 +130,14 @@ func (r *repository) Update(ctx context.Context, id int, req UpdateUserRequest, 
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE users SET
 			name = COALESCE($1, name),
-			email = COALESCE(LOWER($2), email),
-			password_hash = COALESCE($3, password_hash),
-			role = COALESCE($4, role),
-			is_active = COALESCE($5, is_active),
+			username = COALESCE(LOWER($2), username),
+			email = COALESCE(LOWER($3), email),
+			password_hash = COALESCE($4, password_hash),
+			role = COALESCE($5, role),
+			is_active = COALESCE($6, is_active),
 			updated_at = datetime('now')
-		WHERE id = $6;
-	`, req.Name, req.Email, passwordHash, role, isActive, id)
+		WHERE id = $7;
+	`, req.Name, req.Username, req.Email, passwordHash, role, isActive, id)
 	if err != nil {
 		return err
 	}

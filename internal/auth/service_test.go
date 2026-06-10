@@ -29,6 +29,7 @@ func (f *fakeRepository) Create(ctx context.Context, req CreateUserRequest, pass
 	f.users[id] = &User{
 		ID:           id,
 		Name:         req.Name,
+		Username:     req.Username,
 		Email:        req.Email,
 		PasswordHash: passwordHash,
 		Role:         req.Role,
@@ -56,6 +57,16 @@ func (f *fakeRepository) GetByEmail(ctx context.Context, email string) (*User, e
 	return nil, nil
 }
 
+func (f *fakeRepository) GetByUsername(ctx context.Context, username string) (*User, error) {
+	for _, user := range f.users {
+		if user.Username == username {
+			copy := *user
+			return &copy, nil
+		}
+	}
+	return nil, nil
+}
+
 func (f *fakeRepository) List(ctx context.Context) ([]User, error) {
 	users := []User{}
 	for _, user := range f.users {
@@ -71,6 +82,9 @@ func (f *fakeRepository) Update(ctx context.Context, id int, req UpdateUserReque
 	}
 	if req.Name != nil {
 		user.Name = *req.Name
+	}
+	if req.Username != nil {
+		user.Username = *req.Username
 	}
 	if req.Email != nil {
 		user.Email = *req.Email
@@ -111,6 +125,7 @@ func TestServiceLoginAndRefresh(t *testing.T) {
 
 	user, err := svc.CreateUser(context.Background(), CreateUserRequest{
 		Name:     "Owner",
+		Username: "Owner",
 		Email:    "owner@example.com",
 		Password: "password123",
 		Role:     RoleAdmin,
@@ -120,7 +135,7 @@ func TestServiceLoginAndRefresh(t *testing.T) {
 	}
 
 	login, err := svc.Login(context.Background(), LoginRequest{
-		Email:    user.Email,
+		Username: user.Username,
 		Password: "password123",
 	})
 	if err != nil {
@@ -131,6 +146,9 @@ func TestServiceLoginAndRefresh(t *testing.T) {
 	}
 	if login.User.Role != RoleAdmin {
 		t.Fatalf("expected admin role, got %q", login.User.Role)
+	}
+	if login.User.Username != "owner" || login.User.Email != "owner@example.com" {
+		t.Fatalf("unexpected login user: %#v", login.User)
 	}
 
 	refresh, err := svc.Refresh(context.Background(), login.RefreshToken)
@@ -148,6 +166,7 @@ func TestServiceRejectsInvalidPasswordAndInactiveUser(t *testing.T) {
 
 	user, err := svc.CreateUser(context.Background(), CreateUserRequest{
 		Name:     "Operator",
+		Username: "operator",
 		Email:    "operator@example.com",
 		Password: "password123",
 		Role:     RoleOperator,
@@ -157,7 +176,7 @@ func TestServiceRejectsInvalidPasswordAndInactiveUser(t *testing.T) {
 	}
 
 	if _, err := svc.Login(context.Background(), LoginRequest{
-		Email:    user.Email,
+		Username: user.Username,
 		Password: "wrong-password",
 	}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("expected invalid credentials, got %v", err)
@@ -167,7 +186,7 @@ func TestServiceRejectsInvalidPasswordAndInactiveUser(t *testing.T) {
 		t.Fatalf("DeactivateUser returned error: %v", err)
 	}
 	if _, err := svc.Login(context.Background(), LoginRequest{
-		Email:    user.Email,
+		Username: user.Username,
 		Password: "password123",
 	}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("expected inactive user to be rejected, got %v", err)
@@ -176,7 +195,7 @@ func TestServiceRejectsInvalidPasswordAndInactiveUser(t *testing.T) {
 
 func TestJWTRejectsWrongTokenType(t *testing.T) {
 	jwt := NewJWTService("test-secret")
-	user := &User{ID: 7, Email: "guest@example.com", Role: RoleGuest}
+	user := &User{ID: 7, Username: "guest", Email: "guest@example.com", Role: RoleGuest}
 
 	refreshToken, err := jwt.Generate(user, TokenTypeRefresh, time.Hour)
 	if err != nil {
@@ -184,5 +203,63 @@ func TestJWTRejectsWrongTokenType(t *testing.T) {
 	}
 	if _, err := jwt.Validate(refreshToken, TokenTypeAccess); err == nil {
 		t.Fatal("expected refresh token to be rejected as access token")
+	}
+}
+
+func TestServiceRejectsEmailAsLoginIdentifier(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newTestService(repo)
+
+	user, err := svc.CreateUser(context.Background(), CreateUserRequest{
+		Name:     "Owner",
+		Username: "owner",
+		Email:    "owner@example.com",
+		Password: "password123",
+		Role:     RoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	if _, err := svc.Login(context.Background(), LoginRequest{
+		Username: user.Email,
+		Password: "password123",
+	}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected email login identifier to be rejected, got %v", err)
+	}
+}
+
+func TestRefreshRejectsChangedUsernameClaim(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newTestService(repo)
+
+	user, err := svc.CreateUser(context.Background(), CreateUserRequest{
+		Name:     "Owner",
+		Username: "owner",
+		Email:    "owner@example.com",
+		Password: "password123",
+		Role:     RoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	login, err := svc.Login(context.Background(), LoginRequest{
+		Username: user.Username,
+		Password: "password123",
+	})
+	if err != nil {
+		t.Fatalf("Login returned error: %v", err)
+	}
+
+	changedUsername := "owner2"
+	if _, err := svc.UpdateUser(context.Background(), user.ID, UpdateUserRequest{
+		Username: &changedUsername,
+	}); err != nil {
+		t.Fatalf("UpdateUser returned error: %v", err)
+	}
+
+	if _, err := svc.Refresh(context.Background(), login.RefreshToken); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected changed username claim to be rejected, got %v", err)
 	}
 }

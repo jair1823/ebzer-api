@@ -23,7 +23,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 	response, err := h.service.Login(c.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid email or password"})
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid username or password"})
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

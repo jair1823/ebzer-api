@@ -1,7 +1,7 @@
 package auth
 
 type LoginRequest struct {
-	Email    string `json:"email"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
@@ -25,6 +25,7 @@ type RefreshResponse struct {
 
 type CreateUserRequest struct {
 	Name     string `json:"name"`
+	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Role     Role   `json:"role"`
@@ -32,6 +33,7 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	Name     *string `json:"name"`
+	Username *string `json:"username"`
 	Email    *string `json:"email"`
 	Password *string `json:"password"`
 	Role     *Role   `json:"role"`
