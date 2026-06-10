@@ -15,7 +15,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id int) (*Order, error)
 	GetAll(ctx context.Context, statusID *int, from *time.Time, to *time.Time) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
-	FinishOrder(ctx context.Context, id int) error
+	FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error)
 	Delete(ctx context.Context, id int) error
 }
 
@@ -59,7 +59,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
 		o.estimated_delivery_date, o.delivery_type, o.notes,
 		o.client_name, o.client_phone,
-		o.created_at, o.updated_at,
+		o.paid_at, o.created_at, o.updated_at,
 		s.id, s.name, s.display_name, s.color, s.order_position,
 		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at
 	FROM orders o
@@ -73,7 +73,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 		&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
 		&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
 		&o.ClientName, &o.ClientPhone,
-		&o.CreatedAt, &o.UpdatedAt,
+		&o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 		&status.ID, &status.Name, &status.DisplayName, &status.Color,
 		&status.OrderPosition, &status.IsSystemStatus, &status.IsFinalStatus,
 		&status.IsActive, &status.CreatedAt, &status.UpdatedAt,
@@ -99,7 +99,7 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
 		o.estimated_delivery_date, o.delivery_type, o.notes,
 		o.client_name, o.client_phone,
-		o.created_at, o.updated_at,
+		o.paid_at, o.created_at, o.updated_at,
 		s.id, s.name, s.display_name, s.color, s.order_position,
 		s.is_system_status, s.is_final_status, s.is_active, s.created_at, s.updated_at
 	FROM orders o
@@ -145,7 +145,7 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 			&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
 			&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
 			&o.ClientName, &o.ClientPhone,
-			&o.CreatedAt, &o.UpdatedAt,
+			&o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 			&status.ID, &status.Name, &status.DisplayName, &status.Color,
 			&status.OrderPosition, &status.IsSystemStatus, &status.IsFinalStatus,
 			&status.IsActive, &status.CreatedAt, &status.UpdatedAt,
@@ -249,14 +249,86 @@ func (r *repository) Delete(ctx context.Context, id int) error {
 }
 
 // -------------------- FINISH ORDER --------------------
-func (r *repository) FinishOrder(ctx context.Context, id int) error {
-	// Set to system final status 'completed'
-	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status_id = (SELECT id FROM order_statuses WHERE name = 'completed'), updated_at = datetime('now') WHERE id = $1", id)
+func (r *repository) FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var amountCharged float64
+	err = tx.QueryRowContext(ctx, "SELECT amount_charged FROM orders WHERE id = $1", id).Scan(&amountCharged)
+	if err == sql.ErrNoRows {
+		return nil, errors.New("order not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var currentTotalPaid float64
+	err = tx.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM income WHERE order_id = $1", id).Scan(&currentTotalPaid)
+	if err != nil {
+		return nil, err
+	}
+
+	pendingAmount := amountCharged - currentTotalPaid
+	amountPaid := 0.0
+	var incomeID *int
+
+	if pendingAmount > 0 {
+		var createdIncomeID int
+		err = tx.QueryRowContext(ctx, `
+			INSERT INTO income (order_id, amount, date)
+			VALUES ($1, $2, datetime('now'))
+			RETURNING id;
+		`, id, pendingAmount).Scan(&createdIncomeID)
+		if err != nil {
+			return nil, err
+		}
+
+		amountPaid = pendingAmount
+		incomeID = &createdIncomeID
+	}
+
+	result, err := tx.ExecContext(ctx, `
+		UPDATE orders SET
+			status_id = (SELECT id FROM order_statuses WHERE name = 'completed'),
+			paid_at = datetime('now'),
+			updated_at = datetime('now')
+		WHERE id = $1;
+	`, id)
+	if err != nil {
+		return nil, err
 	}
 	if rows, _ := result.RowsAffected(); rows == 0 {
-		return errors.New("order not found")
+		return nil, errors.New("order not found")
 	}
-	return nil
+
+	var paidAt internaldb.NullTime
+	if err := tx.QueryRowContext(ctx, "SELECT paid_at FROM orders WHERE id = $1", id).Scan(&paidAt); err != nil {
+		return nil, err
+	}
+
+	totalPaid := currentTotalPaid + amountPaid
+	remaining := amountCharged - totalPaid
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	finishResult := &FinishOrderResult{
+		Finished:      true,
+		IncomeCreated: incomeID != nil,
+		IncomeID:      incomeID,
+		AmountPaid:    amountPaid,
+		TotalPaid:     totalPaid,
+		Remaining:     remaining,
+		IsFullyPaid:   totalPaid >= amountCharged,
+		PaidAt:        &paidAt,
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return finishResult, nil
 }

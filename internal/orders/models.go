@@ -38,6 +38,7 @@ type Order struct {
 	ClientName            *string      `json:"client_name"`
 	ClientPhone           *string      `json:"client_phone"`
 	Notes                 *string      `json:"notes"`
+	PaidAt                *db.NullTime `json:"paid_at"`
 	CreatedAt             db.Time      `json:"created_at"`
 	UpdatedAt             db.Time      `json:"updated_at"`
 }
@@ -48,4 +49,15 @@ type PaymentStatus struct {
 	Remaining      float64 `json:"remaining"`
 	PercentagePaid float64 `json:"percentage_paid"`
 	IsFullyPaid    bool    `json:"is_fully_paid"`
+}
+
+type FinishOrderResult struct {
+	Finished      bool         `json:"finished"`
+	IncomeCreated bool         `json:"income_created"`
+	IncomeID      *int         `json:"income_id"`
+	AmountPaid    float64      `json:"amount_paid"`
+	TotalPaid     float64      `json:"total_paid"`
+	Remaining     float64      `json:"remaining"`
+	IsFullyPaid   bool         `json:"is_fully_paid"`
+	PaidAt        *db.NullTime `json:"paid_at"`
 }

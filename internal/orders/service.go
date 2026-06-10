@@ -13,7 +13,7 @@ type Service interface {
 	GetByID(ctx context.Context, id int) (*Order, error)
 	GetAll(ctx context.Context, statusID *int, from, to *string) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
-	FinishOrder(ctx context.Context, id int) error
+	FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error)
 	Delete(ctx context.Context, id int) error
 	GetPaymentStatus(ctx context.Context, orderID int) (*PaymentStatus, error)
 }
@@ -94,7 +94,7 @@ func (s *service) Delete(ctx context.Context, id int) error {
 
 // -------------------- Finish Order --------------------
 
-func (s *service) FinishOrder(ctx context.Context, id int) error {
+func (s *service) FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error) {
 	return s.repo.FinishOrder(ctx, id)
 }
 

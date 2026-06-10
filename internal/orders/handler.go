@@ -132,14 +132,14 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 // -------------------- FINISH ORDER --------------------
 func (h *Handler) FinishOrder(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(c.Params("id"))
-	err := h.service.FinishOrder(c.Context(), id)
+	result, err := h.service.FinishOrder(c.Context(), id)
 	if err != nil {
 		if err.Error() == "order not found" {
 			return fiber.NewError(404, "order not found")
 		}
 		return fiber.NewError(500, err.Error())
 	}
-	return c.JSON(fiber.Map{"finished": true})
+	return c.JSON(result)
 }
 
 // -------------------- GET PAYMENT STATUS --------------------

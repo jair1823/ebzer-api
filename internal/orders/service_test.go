@@ -33,9 +33,9 @@ func (f *fakeRepo) Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	return nil
 }
 
-func (f *fakeRepo) FinishOrder(ctx context.Context, id int) error {
+func (f *fakeRepo) FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error) {
 	f.finishCalled = true
-	return nil
+	return &FinishOrderResult{Finished: true}, nil
 }
 
 func (f *fakeRepo) Delete(ctx context.Context, id int) error {
@@ -48,12 +48,18 @@ type fakeIncomeRepo struct{}
 func (f *fakeIncomeRepo) Create(ctx context.Context, dto incomes.CreateIncomeDTO) (int, error) {
 	return 0, nil
 }
-func (f *fakeIncomeRepo) GetByID(ctx context.Context, id int) (*incomes.Income, error) { return nil, nil }
+func (f *fakeIncomeRepo) GetByID(ctx context.Context, id int) (*incomes.Income, error) {
+	return nil, nil
+}
 func (f *fakeIncomeRepo) GetAll(ctx context.Context, from *time.Time, to *time.Time) ([]incomes.Income, error) {
 	return nil, nil
 }
-func (f *fakeIncomeRepo) GetByOrderID(ctx context.Context, orderID int) ([]incomes.Income, error) { return nil, nil }
-func (f *fakeIncomeRepo) Update(ctx context.Context, id int, dto incomes.UpdateIncomeDTO) error { return nil }
+func (f *fakeIncomeRepo) GetByOrderID(ctx context.Context, orderID int) ([]incomes.Income, error) {
+	return nil, nil
+}
+func (f *fakeIncomeRepo) Update(ctx context.Context, id int, dto incomes.UpdateIncomeDTO) error {
+	return nil
+}
 func (f *fakeIncomeRepo) Delete(ctx context.Context, id int) error { return nil }
 
 func TestCreate_DefaultsToNew(t *testing.T) {
@@ -87,9 +93,12 @@ func TestFinishOrder_CallsRepo(t *testing.T) {
 	var incRepo fakeIncomeRepo
 	svc := NewService(repo, &incRepo)
 
-	err := svc.FinishOrder(context.Background(), 7)
+	result, err := svc.FinishOrder(context.Background(), 7)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
+	}
+	if result == nil || !result.Finished {
+		t.Fatalf("expected finish result, got %#v", result)
 	}
 	if !repo.finishCalled {
 		t.Fatalf("expected FinishOrder to call repo.FinishOrder")
