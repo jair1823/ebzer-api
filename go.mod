@@ -5,6 +5,7 @@ go 1.25.5
 require (
 	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/mattn/go-sqlite3 v1.14.22
+	golang.org/x/crypto v0.53.0
 )
 
 require (
@@ -18,5 +19,5 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 )

@@ -6,8 +6,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y sqlite3
-
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -23,6 +21,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/data /app/internal/db
+
+# Install SQLite3 for database management
+RUN apt-get update && apt-get install -y sqlite3
 
 COPY --from=build /out/ebzer-api /app/ebzer-api
 COPY internal/db/migrations /app/internal/db/migrations

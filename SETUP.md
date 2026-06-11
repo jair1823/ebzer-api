@@ -242,8 +242,31 @@ curl -X POST http://localhost:3000/api/orders/1/finish
 # Ruta de la base de datos (opcional, default: ./data/ebzer.db)
 export SQLITE_DB_PATH=/custom/path/ebzer.db
 
+# JWT y usuario administrador inicial
+export JWT_SECRET=change-this-secret
+export INITIAL_ADMIN_NAME="Admin"
+export INITIAL_ADMIN_EMAIL=admin@example.com
+export INITIAL_ADMIN_PASSWORD=password123
+
 # Ejemplo con ruta personalizada
 SQLITE_DB_PATH=/tmp/test.db go run cmd/server/main.go
+```
+
+`JWT_SECRET` is required in production (`APP_ENV=production` or
+`RAILWAY_ENVIRONMENT=production`). When the `users` table is empty, the server
+creates the first `admin` user from the `INITIAL_ADMIN_*` variables. In local
+development, the server can start without these variables, but no user will be
+available to log in.
+
+Railway must define:
+
+```bash
+APP_ENV=production
+JWT_SECRET=<strong random secret>
+INITIAL_ADMIN_NAME=<owner name>
+INITIAL_ADMIN_EMAIL=<owner email>
+INITIAL_ADMIN_PASSWORD=<strong initial password>
+SQLITE_DB_PATH=/app/data/ebzer.db
 ```
 
 ### Configuración de SQLite
