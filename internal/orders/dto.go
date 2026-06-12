@@ -37,6 +37,7 @@ type CreateOrderDTO struct {
 	StatusID              int           `json:"status_id"`
 	EstimatedDeliveryDate *time.Time    `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType  `json:"delivery_type"`
+	Platform              Platform      `json:"platform"`
 	ClientName            *string       `json:"client_name"`
 	ClientPhone           *string       `json:"client_phone"`
 	Notes                 *string       `json:"notes"`
@@ -48,6 +49,7 @@ type UpdateOrderDTO struct {
 	StatusID              *int           `json:"status_id"`
 	EstimatedDeliveryDate *time.Time     `json:"estimated_delivery_date"`
 	DeliveryType          *DeliveryType  `json:"delivery_type"`
+	Platform              *Platform      `json:"platform"`
 	ClientName            *string        `json:"client_name"`
 	ClientPhone           *string        `json:"client_phone"`
 	Notes                 *string        `json:"notes"`

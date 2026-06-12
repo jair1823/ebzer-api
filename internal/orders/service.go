@@ -39,6 +39,9 @@ func (s *service) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 	if dto.StatusID == 0 {
 		dto.StatusID = 1
 	}
+	if dto.Platform == "" {
+		dto.Platform = PlatformWhatsApp
+	}
 	return s.repo.Create(ctx, dto)
 }
 

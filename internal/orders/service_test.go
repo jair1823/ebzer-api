@@ -63,6 +63,9 @@ func TestCreate_DefaultsToNew(t *testing.T) {
 	if repo.createdDTO.StatusID != 1 {
 		t.Fatalf("expected StatusID defaulted to 1 (new), got %d", repo.createdDTO.StatusID)
 	}
+	if repo.createdDTO.Platform != PlatformWhatsApp {
+		t.Fatalf("expected Platform defaulted to whatsapp, got %q", repo.createdDTO.Platform)
+	}
 }
 
 func TestFinishOrder_CallsRepo(t *testing.T) {

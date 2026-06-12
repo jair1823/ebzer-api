@@ -31,8 +31,8 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 	query := `
-	INSERT INTO orders (description, amount_charged, status_id, estimated_delivery_date, delivery_type, notes, client_name, client_phone)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	INSERT INTO orders (description, amount_charged, status_id, estimated_delivery_date, delivery_type, platform, notes, client_name, client_phone)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	RETURNING id;
 	`
 
@@ -43,6 +43,7 @@ func (r *repository) Create(ctx context.Context, dto CreateOrderDTO) (int, error
 		dto.StatusID,
 		dto.EstimatedDeliveryDate,
 		dto.DeliveryType,
+		dto.Platform,
 		dto.Notes,
 		dto.ClientName,
 		dto.ClientPhone,
@@ -57,7 +58,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	row := r.db.QueryRowContext(ctx, `
 	SELECT 
 		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
-		o.estimated_delivery_date, o.delivery_type, o.notes,
+		o.estimated_delivery_date, o.delivery_type, o.platform, o.notes,
 		o.client_name, o.client_phone,
 		o.paid_at, o.created_at, o.updated_at,
 		s.id, s.name, s.display_name, s.color, s.order_position,
@@ -78,7 +79,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	var totalPaid float64
 	err := row.Scan(
 		&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
-		&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
+		&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Platform, &o.Notes,
 		&o.ClientName, &o.ClientPhone,
 		&o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 		&status.ID, &status.Name, &status.DisplayName, &status.Color,
@@ -106,7 +107,7 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 	query := `
 	SELECT 
 		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
-		o.estimated_delivery_date, o.delivery_type, o.notes,
+		o.estimated_delivery_date, o.delivery_type, o.platform, o.notes,
 		o.client_name, o.client_phone,
 		o.paid_at, o.created_at, o.updated_at,
 		s.id, s.name, s.display_name, s.color, s.order_position,
@@ -159,7 +160,7 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 		var totalPaid float64
 		if err := rows.Scan(
 			&o.ID, &o.Description, &o.AmountCharged, &o.StatusID, &o.EntryDate,
-			&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Notes,
+			&o.EstimatedDeliveryDate, &o.DeliveryType, &o.Platform, &o.Notes,
 			&o.ClientName, &o.ClientPhone,
 			&o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 			&status.ID, &status.Name, &status.DisplayName, &status.Color,
@@ -221,11 +222,12 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 		status_id = COALESCE($3, status_id),
 		estimated_delivery_date = COALESCE($4, estimated_delivery_date),
 		delivery_type = COALESCE($5, delivery_type),
-		notes = COALESCE($6, notes),
-		client_name = COALESCE($7, client_name),
-		client_phone = COALESCE($8, client_phone),
+		platform = COALESCE($6, platform),
+		notes = COALESCE($7, notes),
+		client_name = COALESCE($8, client_name),
+		client_phone = COALESCE($9, client_phone),
 		updated_at = datetime('now')
-	WHERE id = $9;
+	WHERE id = $10;
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -234,6 +236,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 		dto.StatusID,
 		dto.EstimatedDeliveryDate,
 		dto.DeliveryType,
+		dto.Platform,
 		dto.Notes,
 		dto.ClientName,
 		dto.ClientPhone,

@@ -5,11 +5,18 @@ import (
 )
 
 type DeliveryType string
+type Platform string
 
 const (
 	DeliveryPickup   DeliveryType = "pickup"
 	DeliveryShipping DeliveryType = "shipping"
 	DeliveryDelivery DeliveryType = "delivery"
+)
+
+const (
+	PlatformWhatsApp  Platform = "whatsapp"
+	PlatformInstagram Platform = "instagram"
+	PlatformFacebook  Platform = "facebook"
 )
 
 // OrderStatus represents a configurable status stored in order_statuses table
@@ -36,6 +43,7 @@ type Order struct {
 	EntryDate             db.Time        `json:"entry_date"`
 	EstimatedDeliveryDate *db.NullTime   `json:"estimated_delivery_date"`
 	DeliveryType          DeliveryType   `json:"delivery_type"`
+	Platform              Platform       `json:"platform"`
 	ClientName            *string        `json:"client_name"`
 	ClientPhone           *string        `json:"client_phone"`
 	Notes                 *string        `json:"notes"`
