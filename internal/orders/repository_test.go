@@ -44,6 +44,7 @@ func newTestOrderRepository(t *testing.T) (*sql.DB, Repository) {
 		entry_date TEXT NOT NULL DEFAULT (datetime('now')),
 		estimated_delivery_date TEXT,
 		delivery_type TEXT NOT NULL DEFAULT 'pickup',
+		platform TEXT NOT NULL DEFAULT 'whatsapp' CHECK(platform IN ('whatsapp', 'instagram', 'facebook')),
 		client_name TEXT,
 		client_phone TEXT,
 		notes TEXT,
@@ -108,6 +109,9 @@ func TestRepositoryGetAllPopulatesStatusWithSingleConnection(t *testing.T) {
 	if first.Status.Name != "new" {
 		t.Fatalf("expected First order status new, got %q", first.Status.Name)
 	}
+	if first.Platform != PlatformWhatsApp {
+		t.Fatalf("expected First order platform whatsapp, got %q", first.Platform)
+	}
 
 	second := byDescription["Second order"]
 	if second.Status == nil {
@@ -115,6 +119,9 @@ func TestRepositoryGetAllPopulatesStatusWithSingleConnection(t *testing.T) {
 	}
 	if second.Status.Name != "completed" {
 		t.Fatalf("expected Second order status completed, got %q", second.Status.Name)
+	}
+	if second.Platform != PlatformWhatsApp {
+		t.Fatalf("expected Second order platform whatsapp, got %q", second.Platform)
 	}
 }
 
@@ -222,6 +229,89 @@ func TestRepositoryGetByIDPopulatesStatusWithJoin(t *testing.T) {
 	}
 	if order.PaymentStatus.AmountCharged != 25.50 {
 		t.Fatalf("expected amount charged 25.50, got %.2f", order.PaymentStatus.AmountCharged)
+	}
+	if order.Platform != PlatformWhatsApp {
+		t.Fatalf("expected platform whatsapp, got %q", order.Platform)
+	}
+}
+
+func TestServiceCreateDefaultsPlatformToWhatsApp(t *testing.T) {
+	_, repo := newTestOrderRepository(t)
+	svc := NewService(repo)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	id, err := svc.Create(ctx, CreateOrderDTO{
+		Description:   "Default platform",
+		AmountCharged: CustomFloat64(55.00),
+		DeliveryType:  DeliveryPickup,
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	order, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if order == nil {
+		t.Fatal("expected created order")
+	}
+	if order.Platform != PlatformWhatsApp {
+		t.Fatalf("expected platform whatsapp, got %q", order.Platform)
+	}
+}
+
+func TestRepositoryCreateWithPlatform(t *testing.T) {
+	_, repo := newTestOrderRepository(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	id, err := repo.Create(ctx, CreateOrderDTO{
+		Description:   "Instagram order",
+		AmountCharged: CustomFloat64(42.00),
+		StatusID:      1,
+		DeliveryType:  DeliveryPickup,
+		Platform:      PlatformInstagram,
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	order, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if order == nil {
+		t.Fatal("expected created order")
+	}
+	if order.Platform != PlatformInstagram {
+		t.Fatalf("expected platform instagram, got %q", order.Platform)
+	}
+}
+
+func TestRepositoryUpdatePlatform(t *testing.T) {
+	_, repo := newTestOrderRepository(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	platform := PlatformFacebook
+	if err := repo.Update(ctx, 1, UpdateOrderDTO{Platform: &platform}); err != nil {
+		t.Fatalf("Update returned error: %v", err)
+	}
+
+	order, err := repo.GetByID(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if order == nil {
+		t.Fatal("expected order")
+	}
+	if order.Platform != PlatformFacebook {
+		t.Fatalf("expected platform facebook, got %q", order.Platform)
 	}
 }
 
