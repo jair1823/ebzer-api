@@ -22,7 +22,7 @@ func (m *mockRepository) GetByID(ctx context.Context, id int) (*Order, error) {
 	return nil, nil
 }
 
-func (m *mockRepository) GetAll(ctx context.Context, status *OrderStatus, from, to *time.Time) ([]Order, error) {
+func (m *mockRepository) GetAll(ctx context.Context, statuses []OrderStatus, from, to *time.Time) ([]Order, error) {
 	return nil, nil
 }
 
@@ -68,8 +68,8 @@ func TestCreate_AppliesDefaultStatus(t *testing.T) {
 		t.Fatal("Expected Status to be set with default value")
 	}
 
-	if *capturedDTO.Status != StatusConfirmed {
-		t.Errorf("Expected default Status 'confirmed', got: %s", *capturedDTO.Status)
+	if *capturedDTO.Status != StatusNew {
+		t.Errorf("Expected default Status 'new', got: %s", *capturedDTO.Status)
 	}
 
 	if capturedDTO.DeliveryType == nil {
@@ -93,7 +93,7 @@ func TestCreate_RespectsProvidedStatus(t *testing.T) {
 
 	service := NewService(mockRepo, nil)
 
-	customStatus := StatusInProgress
+	customStatus := StatusActive
 	customDelivery := DeliveryShipping
 
 	dto := CreateOrderDTO{
@@ -110,8 +110,8 @@ func TestCreate_RespectsProvidedStatus(t *testing.T) {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
 
-	if *capturedDTO.Status != StatusInProgress {
-		t.Errorf("Expected Status 'in_progress', got: %s", *capturedDTO.Status)
+	if *capturedDTO.Status != StatusActive {
+		t.Errorf("Expected Status 'active', got: %s", *capturedDTO.Status)
 	}
 
 	if *capturedDTO.DeliveryType != DeliveryShipping {

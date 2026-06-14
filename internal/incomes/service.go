@@ -47,7 +47,7 @@ func (s *service) GetAll(ctx context.Context, fromStr, toStr *string) ([]Income,
 	var from *time.Time
 	var to *time.Time
 
-	// Parse from
+	// Parse from (inicio del día)
 	if fromStr != nil {
 		t, err := time.Parse("2006-01-02", *fromStr)
 		if err != nil {
@@ -56,13 +56,15 @@ func (s *service) GetAll(ctx context.Context, fromStr, toStr *string) ([]Income,
 		from = &t
 	}
 
-	// Parse to
+	// Parse to (final del día - añadir 24 horas para incluir todo el día)
 	if toStr != nil {
 		t, err := time.Parse("2006-01-02", *toStr)
 		if err != nil {
 			return nil, errors.New("invalid to date (expected format: YYYY-MM-DD)")
 		}
-		to = &t
+		// Añadir 1 día completo para incluir todo el día especificado
+		endOfDay := t.AddDate(0, 0, 1)
+		to = &endOfDay
 	}
 
 	return s.repo.GetAll(ctx, from, to)

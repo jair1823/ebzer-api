@@ -3,7 +3,7 @@ CREATE TABLE orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     description TEXT NOT NULL,
     amount_charged REAL NOT NULL,
-    status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed', 'in_progress', 'ready', 'shipped', 'delivered', 'cancelled')),
+    status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new', 'active', 'ready', 'completed', 'cancelled')),
     entry_date TEXT NOT NULL DEFAULT (datetime('now')),
     estimated_delivery_date TEXT,
     delivery_type TEXT NOT NULL DEFAULT 'pickup' CHECK(delivery_type IN ('pickup', 'shipping', 'delivery')),

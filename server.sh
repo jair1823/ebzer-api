@@ -19,7 +19,17 @@ case "$1" in
     
     if curl -s http://localhost:3000/ping > /dev/null 2>&1; then
       echo "✅ Servidor iniciado exitosamente (PID: $SERVER_PID)"
-      echo "📊 Servidor corriendo en http://localhost:3000"
+      echo ""
+      echo "  📡 Servidor accesible en:"
+      echo "     ➜ Local:   http://localhost:3000"
+      
+      # Obtener IP local
+      IP=$(hostname -I | awk '{print $1}')
+      if [ ! -z "$IP" ]; then
+        echo "     ➜ Network: http://$IP:3000"
+      fi
+      
+      echo ""
       echo "📝 Logs en: server.log"
     else
       echo "❌ Error al iniciar el servidor. Ver server.log para detalles."

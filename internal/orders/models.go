@@ -8,12 +8,11 @@ type OrderStatus string
 type DeliveryType string
 
 const (
-	StatusConfirmed  OrderStatus = "confirmed"
-	StatusInProgress OrderStatus = "in_progress"
-	StatusReady      OrderStatus = "ready"
-	StatusShipped    OrderStatus = "shipped"
-	StatusDelivered  OrderStatus = "delivered"
-	StatusCancelled  OrderStatus = "cancelled"
+	StatusNew       OrderStatus = "new"
+	StatusActive    OrderStatus = "active"
+	StatusReady     OrderStatus = "ready"
+	StatusCompleted OrderStatus = "completed"
+	StatusCancelled OrderStatus = "cancelled"
 )
 
 const (

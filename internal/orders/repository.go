@@ -11,7 +11,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, dto CreateOrderDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Order, error)
-	GetAll(ctx context.Context, status *OrderStatus, from *time.Time, to *time.Time) ([]Order, error)
+	GetAll(ctx context.Context, statuses []OrderStatus, from *time.Time, to *time.Time) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
@@ -79,7 +79,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 
 // -------------------- GET ALL (FILTERS) --------------------
 
-func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time.Time, to *time.Time) ([]Order, error) {
+func (r *repository) GetAll(ctx context.Context, statuses []OrderStatus, from *time.Time, to *time.Time) ([]Order, error) {
 	query := `
 	SELECT 
 		id, description, amount_charged, status, entry_date,
@@ -93,10 +93,25 @@ func (r *repository) GetAll(ctx context.Context, status *OrderStatus, from *time
 	args := []any{}
 	arg := 1
 
-	if status != nil {
-		query += fmt.Sprintf(" AND status = $%d", arg)
-		args = append(args, *status)
-		arg++
+	// Soportar múltiples status con IN clause
+	if len(statuses) > 0 {
+		if len(statuses) == 1 {
+			query += fmt.Sprintf(" AND status = $%d", arg)
+			args = append(args, statuses[0])
+			arg++
+		} else {
+			// Construir IN clause: IN ($1, $2, $3)
+			placeholders := ""
+			for i, status := range statuses {
+				if i > 0 {
+					placeholders += ", "
+				}
+				placeholders += fmt.Sprintf("$%d", arg)
+				args = append(args, status)
+				arg++
+			}
+			query += fmt.Sprintf(" AND status IN (%s)", placeholders)
+		}
 	}
 
 	if from != nil {
@@ -196,7 +211,7 @@ func (r *repository) Delete(ctx context.Context, id int) error {
 
 // -------------------- FINISH ORDER --------------------
 func (r *repository) FinishOrder(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status = 'delivered', updated_at = datetime('now') WHERE id = $1", id)
+	result, err := r.db.ExecContext(ctx, "UPDATE orders SET status = 'completed', updated_at = datetime('now') WHERE id = $1", id)
 	if err != nil {
 		return err
 	}

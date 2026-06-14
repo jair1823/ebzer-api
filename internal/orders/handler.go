@@ -2,6 +2,7 @@ package orders
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -48,10 +49,16 @@ func (h *Handler) GetAll(c *fiber.Ctx) error {
 	from := c.Query("from")
 	to := c.Query("to")
 
-	var status *OrderStatus
+	var statuses []OrderStatus
 	if statusStr != "" {
-		s := OrderStatus(statusStr)
-		status = &s
+		// Dividir por comas y crear slice de status
+		statusArr := strings.Split(statusStr, ",")
+		for _, s := range statusArr {
+			s = strings.TrimSpace(s) // Eliminar espacios
+			if s != "" {
+				statuses = append(statuses, OrderStatus(s))
+			}
+		}
 	}
 
 	// Solo pasar punteros si los valores no están vacíos
@@ -65,7 +72,7 @@ func (h *Handler) GetAll(c *fiber.Ctx) error {
 		toPtr = &to
 	}
 
-	orders, err := h.service.GetAll(c.Context(), status, fromPtr, toPtr)
+	orders, err := h.service.GetAll(c.Context(), statuses, fromPtr, toPtr)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}

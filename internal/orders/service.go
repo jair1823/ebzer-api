@@ -11,7 +11,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, dto CreateOrderDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Order, error)
-	GetAll(ctx context.Context, status *OrderStatus, from, to *string) ([]Order, error)
+	GetAll(ctx context.Context, statuses []OrderStatus, from, to *string) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) error
 	Delete(ctx context.Context, id int) error
@@ -45,8 +45,8 @@ func (s *service) Create(ctx context.Context, dto CreateOrderDTO) (int, error) {
 
 	// Aplicar defaults según schema
 	if dto.Status == nil {
-		confirmed := StatusConfirmed
-		dto.Status = &confirmed
+		newStatus := StatusNew
+		dto.Status = &newStatus
 	}
 
 	if dto.DeliveryType == nil {
@@ -74,12 +74,12 @@ func (s *service) GetByID(ctx context.Context, id int) (*Order, error) {
 
 // -------------------- GetAll with filters --------------------
 
-func (s *service) GetAll(ctx context.Context, status *OrderStatus, fromStr, toStr *string) ([]Order, error) {
+func (s *service) GetAll(ctx context.Context, statuses []OrderStatus, fromStr, toStr *string) ([]Order, error) {
 
 	var from *time.Time
 	var to *time.Time
 
-	// Parse from
+	// Parse from (inicio del día)
 	if fromStr != nil {
 		t, err := time.Parse("2006-01-02", *fromStr)
 		if err != nil {
@@ -88,16 +88,20 @@ func (s *service) GetAll(ctx context.Context, status *OrderStatus, fromStr, toSt
 		from = &t
 	}
 
-	// Parse to
+	// Parse to (final del día - añadir 24 horas para incluir todo el día)
 	if toStr != nil {
 		t, err := time.Parse("2006-01-02", *toStr)
 		if err != nil {
 			return nil, errors.New("invalid to date (expected format: YYYY-MM-DD)")
 		}
-		to = &t
+		// Añadir 1 día completo para incluir todo el día especificado
+		// Ejemplo: "2026-04-22" -> "2026-04-22 00:00:00" + 24h = "2026-04-23 00:00:00"
+		// Esto permite que entry_date <= "2026-04-23 00:00:00" incluya todo el día 22
+		endOfDay := t.AddDate(0, 0, 1)
+		to = &endOfDay
 	}
 
-	return s.repo.GetAll(ctx, status, from, to)
+	return s.repo.GetAll(ctx, statuses, from, to)
 }
 
 // -------------------- Update --------------------
@@ -162,7 +166,7 @@ func (s *service) GetPaymentStatus(ctx context.Context, orderID int) (*PaymentSt
 
 func isValidOrderStatus(status OrderStatus) bool {
 	switch status {
-	case StatusConfirmed, StatusInProgress, StatusReady, StatusShipped, StatusDelivered, StatusCancelled:
+	case StatusNew, StatusActive, StatusReady, StatusCompleted, StatusCancelled:
 		return true
 	default:
 		return false

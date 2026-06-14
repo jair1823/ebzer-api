@@ -52,8 +52,10 @@ func main() {
 	app.Use(logger.New()) // Logs every request
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowOrigins:     "http://localhost:5173, http://127.0.0.1:5173, http://192.168.1.45:5173",
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowCredentials: true,
 	}))
 
 	// ---------------------------------------
@@ -123,8 +125,12 @@ func main() {
 	// Start Server
 	// ---------------------------------------
 
-	log.Println("🚀 Server running on http://localhost:3000")
-	if err := app.Listen(":3000"); err != nil {
+	log.Println("🚀 Server starting...")
+	log.Println("   Local:   http://localhost:3000")
+	log.Println("   Network: http://0.0.0.0:3000")
+	log.Println("   Access from other devices using your machine's IP address")
+	
+	if err := app.Listen("0.0.0.0:3000"); err != nil {
 		log.Fatal(err)
 	}
 }

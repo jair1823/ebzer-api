@@ -1,0 +1,214 @@
+2026/04/22 09:53:09 Connecting to SQLite: ./data/ebzer.db
+2026/04/22 09:53:09 🔄 Running database migrations...
+2026/04/22 09:53:09 🔄 Applying migration: 000001_create_orders_table
+2026/04/22 09:53:09 ✅ Successfully applied: 000001_create_orders_table
+2026/04/22 09:53:09 🔄 Applying migration: 000002_create_expense_categories_table
+2026/04/22 09:53:09 ✅ Successfully applied: 000002_create_expense_categories_table
+2026/04/22 09:53:09 🔄 Applying migration: 000003_create_income_table
+2026/04/22 09:53:09 ✅ Successfully applied: 000003_create_income_table
+2026/04/22 09:53:09 🔄 Applying migration: 000004_create_expenses_table
+2026/04/22 09:53:09 ✅ Successfully applied: 000004_create_expenses_table
+2026/04/22 09:53:09 🔄 Applying migration: 000005_create_user_table
+2026/04/22 09:53:09 ✅ Successfully applied: 000005_create_user_table
+2026/04/22 09:53:09 🔄 Applying migration: 000006_create_financial_percentages_table
+2026/04/22 09:53:09 ✅ Successfully applied: 000006_create_financial_percentages_table
+2026/04/22 09:53:09 ✅ All migrations completed successfully
+2026/04/22 09:53:09 ✅ Migrations completed successfully
+2026/04/22 09:53:09 🚀 Server starting...
+2026/04/22 09:53:09    Local:   http://localhost:3000
+2026/04/22 09:53:09    Network: http://0.0.0.0:3000
+2026/04/22 09:53:09    Access from other devices using your machine's IP address
+
+ ┌───────────────────────────────────────────────────┐ 
+ │                  Creaciones API                   │ 
+ │                  Fiber v2.52.10                   │ 
+ │               http://127.0.0.1:3000               │ 
+ │       (bound on host 0.0.0.0 and port 3000)       │ 
+ │                                                   │ 
+ │ Handlers ............ 39  Processes ........... 1 │ 
+ │ Prefork ....... Disabled  PID ............ 262208 │ 
+ └───────────────────────────────────────────────────┘ 
+
+09:53:09 | 200 |     331.349µs | 172.30.112.1 | GET | /api/orders | -
+09:53:10 | 200 |      42.335µs | 127.0.0.1 | GET | /ping | -
+09:53:11 | 200 |     215.403µs | 172.30.112.1 | GET | /api/orders | -
+09:53:11 | 200 |      73.295µs | 172.30.112.1 | GET | /api/orders | -
+09:53:15 | 200 |     196.544µs | 172.30.112.1 | GET | /api/orders | -
+09:53:15 | 200 |      77.104µs | 172.30.112.1 | GET | /api/orders | -
+09:53:19 | 200 |      203.78µs | 172.30.112.1 | GET | /api/orders | -
+09:53:19 | 200 |      89.522µs | 172.30.112.1 | GET | /api/orders | -
+09:53:31 | 200 |     184.542µs | 172.30.112.1 | GET | /api/orders | -
+09:53:31 | 200 |     145.704µs | 172.30.112.1 | GET | /api/orders | -
+09:53:53 | 200 |     226.906µs | 172.30.112.1 | GET | /api/incomes | -
+09:53:53 | 200 |      98.172µs | 172.30.112.1 | GET | /api/incomes | -
+09:53:54 | 200 |      171.33µs | 172.30.112.1 | GET | /api/incomes | -
+09:53:54 | 200 |     123.267µs | 172.30.112.1 | GET | /api/incomes | -
+09:54:04 | 200 |     176.184µs | 172.30.112.1 | GET | /api/orders | -
+09:54:04 | 200 |       83.36µs | 172.30.112.1 | GET | /api/orders | -
+09:54:11 | 200 |      199.49µs | 172.30.112.1 | GET | /api/orders | -
+09:54:11 | 200 |      110.96µs | 172.30.112.1 | GET | /api/orders | -
+09:54:11 | 200 |     181.244µs | 172.30.112.1 | GET | /api/orders | -
+09:54:11 | 200 |      81.888µs | 172.30.112.1 | GET | /api/orders | -
+09:54:12 | 200 |     171.955µs | 172.30.112.1 | GET | /api/orders | -
+09:54:12 | 200 |     141.244µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     188.528µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     131.217µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     174.225µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     124.366µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     179.446µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |      143.19µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     161.554µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     114.879µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     292.584µs | 172.30.112.1 | GET | /api/orders | -
+09:54:13 | 200 |     200.306µs | 172.30.112.1 | GET | /api/orders | -
+09:54:14 | 200 |      253.37µs | 172.30.112.1 | GET | /api/orders | -
+09:54:14 | 200 |      75.606µs | 172.30.112.1 | GET | /api/orders | -
+09:54:14 | 200 |     174.029µs | 172.30.112.1 | GET | /api/orders | -
+09:54:14 | 200 |     128.631µs | 172.30.112.1 | GET | /api/orders | -
+09:54:16 | 200 |     207.433µs | 172.30.112.1 | GET | /api/orders | -
+09:54:16 | 200 |      92.505µs | 172.30.112.1 | GET | /api/orders | -
+09:54:16 | 200 |     315.116µs | 172.30.112.1 | GET | /api/orders | -
+09:54:16 | 200 |     216.271µs | 172.30.112.1 | GET | /api/orders | -
+09:54:20 | 200 |     155.853µs | 172.30.112.1 | GET | /api/orders | -
+09:54:20 | 200 |     100.251µs | 172.30.112.1 | GET | /api/orders | -
+09:55:35 | 204 |      12.497µs | 172.30.112.1 | OPTIONS | /api/orders | -
+09:55:35 | 201 |     799.982µs | 172.30.112.1 | POST | /api/orders | -
+09:55:35 | 200 |     156.075µs | 172.30.112.1 | GET | /api/orders | -
+09:55:35 | 200 |     154.863µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:55:41 | 200 |     166.622µs | 172.30.112.1 | GET | /api/incomes | -
+09:55:53 | 204 |       9.557µs | 172.30.112.1 | OPTIONS | /api/orders/1 | -
+09:55:53 | 200 |     508.506µs | 172.30.112.1 | PUT | /api/orders/1 | -
+09:55:53 | 200 |     156.169µs | 172.30.112.1 | GET | /api/orders | -
+09:55:53 | 200 |     118.091µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:55:53 | 200 |      71.517µs | 172.30.112.1 | GET | /api/incomes | -
+09:55:59 | 200 |     144.594µs | 172.30.112.1 | GET | /api/incomes | -
+09:56:03 | 204 |      10.255µs | 172.30.112.1 | OPTIONS | /api/orders/1 | -
+09:56:03 | 200 |     440.165µs | 172.30.112.1 | PUT | /api/orders/1 | -
+09:56:03 | 200 |     151.103µs | 172.30.112.1 | GET | /api/orders | -
+09:56:03 | 200 |     159.077µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:56:03 | 200 |      80.571µs | 172.30.112.1 | GET | /api/incomes | -
+09:56:05 | 200 |     145.303µs | 172.30.112.1 | GET | /api/incomes | -
+09:56:31 | 204 |       8.396µs | 172.30.112.1 | OPTIONS | /api/orders/1 | -
+09:56:31 | 200 |     377.581µs | 172.30.112.1 | PUT | /api/orders/1 | -
+09:56:31 | 200 |     171.349µs | 172.30.112.1 | GET | /api/orders | -
+09:56:31 | 200 |     162.156µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:56:31 | 200 |      92.556µs | 172.30.112.1 | GET | /api/incomes | -
+09:56:38 | 204 |       9.589µs | 172.30.112.1 | OPTIONS | /api/orders/1/finish | -
+09:56:38 | 200 |     321.032µs | 172.30.112.1 | POST | /api/orders/1/finish | -
+09:56:38 | 200 |     139.675µs | 172.30.112.1 | GET | /api/orders | -
+09:56:38 | 200 |     160.876µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:57:04 | 200 |     216.371µs | 172.30.112.1 | GET | /api/orders | -
+09:57:04 | 200 |     149.931µs | 172.30.112.1 | GET | /api/orders | -
+09:57:04 | 200 |      181.15µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:57:04 | 200 |     141.043µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:57:14 | 204 |       9.186µs | 172.30.112.1 | OPTIONS | /api/orders | -
+09:57:14 | 201 |     845.081µs | 172.30.112.1 | POST | /api/orders | -
+09:57:14 | 200 |     303.091µs | 172.30.112.1 | GET | /api/orders | -
+09:57:14 | 200 |     176.079µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:57:14 | 200 |     302.882µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:57:16 | 200 |     178.192µs | 172.30.112.1 | GET | /api/incomes | -
+09:57:19 | 204 |      11.512µs | 172.30.112.1 | OPTIONS | /api/orders/2 | -
+09:57:19 | 200 |     368.433µs | 172.30.112.1 | PUT | /api/orders/2 | -
+09:57:19 | 200 |     252.749µs | 172.30.112.1 | GET | /api/orders | -
+09:57:19 | 200 |     215.548µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:57:19 | 200 |     367.853µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:57:19 | 200 |      70.342µs | 172.30.112.1 | GET | /api/incomes | -
+09:57:27 | 200 |     151.911µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:02 | 204 |      40.034µs | 172.30.112.1 | OPTIONS | /api/orders/2 | -
+09:58:02 | 200 |     522.292µs | 172.30.112.1 | PUT | /api/orders/2 | -
+09:58:02 | 200 |      262.11µs | 172.30.112.1 | GET | /api/orders | -
+09:58:02 | 200 |     123.232µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:02 | 200 |       132.8µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:02 | 204 |       6.677µs | 172.30.112.1 | OPTIONS | /api/incomes | -
+09:58:02 | 201 |     349.023µs | 172.30.112.1 | POST | /api/incomes | -
+09:58:02 | 200 |     108.195µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:06 | 200 |     223.865µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:06 | 200 |     129.899µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:13 | 200 |     374.416µs | 172.30.112.1 | GET | /api/orders | -
+09:58:13 | 200 |     153.626µs | 172.30.112.1 | GET | /api/orders | -
+09:58:13 | 200 |     192.664µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:13 | 200 |      186.76µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:13 | 200 |      184.46µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:13 | 200 |     139.886µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:13 | 200 |     219.795µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:13 | 200 |     182.778µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:37 | 200 |     318.428µs | 172.30.112.1 | GET | /api/orders | -
+09:58:37 | 200 |     350.784µs | 172.30.112.1 | GET | /api/orders | -
+09:58:37 | 200 |     191.004µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:37 | 200 |     181.547µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:37 | 200 |      339.89µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:37 | 200 |     442.005µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:47 | 200 |     198.072µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:47 | 200 |     169.457µs | 172.30.112.1 | GET | /api/incomes | -
+09:58:49 | 200 |     300.283µs | 172.30.112.1 | GET | /api/orders | -
+09:58:49 | 200 |      159.04µs | 172.30.112.1 | GET | /api/orders | -
+09:58:49 | 200 |      182.33µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:49 | 200 |     252.483µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:49 | 200 |     222.191µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:58:49 | 200 |     337.056µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:58:50 | 200 |      188.14µs | 172.30.112.1 | GET | /api/incomes | -
+09:59:01 | 204 |      11.352µs | 172.30.112.1 | OPTIONS | /api/orders/1 | -
+09:59:01 | 200 |     575.193µs | 172.30.112.1 | PUT | /api/orders/1 | -
+09:59:01 | 200 |      190.43µs | 172.30.112.1 | GET | /api/orders | -
+09:59:01 | 200 |     159.386µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:59:01 | 200 |     219.972µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:59:01 | 204 |      12.607µs | 172.30.112.1 | OPTIONS | /api/incomes | -
+09:59:01 | 201 |     264.819µs | 172.30.112.1 | POST | /api/incomes | -
+09:59:01 | 201 |     310.668µs | 172.30.112.1 | POST | /api/incomes | -
+09:59:01 | 200 |     179.519µs | 172.30.112.1 | GET | /api/incomes | -
+09:59:02 | 200 |      285.63µs | 172.30.112.1 | GET | /api/incomes | -
+09:59:02 | 200 |     117.021µs | 172.30.112.1 | GET | /api/incomes | -
+09:59:07 | 200 |      357.72µs | 172.30.112.1 | GET | /api/orders | -
+09:59:07 | 200 |     158.661µs | 172.30.112.1 | GET | /api/orders | -
+09:59:07 | 200 |     205.275µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:59:07 | 200 |     194.656µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:59:07 | 200 |     159.633µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+09:59:07 | 200 |     246.952µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+09:59:55 | 200 |     292.967µs | 172.30.112.1 | GET | /api/incomes | -
+10:00:07 | 200 |     270.072µs | 172.30.112.1 | GET | /api/incomes | -
+10:00:07 | 200 |     143.819µs | 172.30.112.1 | GET | /api/incomes | -
+10:00:11 | 200 |      253.76µs | 172.30.112.1 | GET | /api/orders | -
+10:00:11 | 200 |     312.335µs | 172.30.112.1 | GET | /api/orders | -
+10:00:11 | 200 |     172.233µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:00:11 | 200 |     213.281µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:00:11 | 200 |      273.73µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:00:11 | 200 |     357.944µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:00:21 | 200 |     288.411µs | 172.30.112.1 | GET | /api/incomes | -
+10:00:26 | 200 |     301.262µs | 172.30.112.1 | GET | /api/incomes | -
+10:01:00 | 200 |     343.522µs | 172.30.112.1 | GET | /api/orders | -
+10:01:00 | 200 |     280.474µs | 172.30.112.1 | GET | /api/orders | -
+10:01:00 | 200 |     442.418µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:00 | 200 |     448.916µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:00 | 200 |     273.542µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:00 | 200 |     385.968µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:02 | 200 |     374.036µs | 172.30.112.1 | GET | /api/orders | -
+10:01:02 | 200 |     249.255µs | 172.30.112.1 | GET | /api/orders | -
+10:01:02 | 200 |      234.91µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:02 | 200 |     336.478µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:02 | 200 |     173.109µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:02 | 200 |         314µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:03 | 200 |     285.987µs | 172.30.112.1 | GET | /api/orders | -
+10:01:03 | 200 |      166.61µs | 172.30.112.1 | GET | /api/orders | -
+10:01:03 | 200 |     245.866µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:03 | 200 |     492.039µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:03 | 200 |     186.219µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:03 | 200 |     347.091µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:13 | 200 |      238.57µs | 172.30.112.1 | GET | /api/incomes | -
+10:01:16 | 204 |      10.395µs | 172.30.112.1 | OPTIONS | /api/orders/2/finish | -
+10:01:16 | 200 |     299.915µs | 172.30.112.1 | POST | /api/orders/2/finish | -
+10:01:16 | 200 |     191.638µs | 172.30.112.1 | GET | /api/orders | -
+10:01:16 | 200 |     426.119µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:16 | 200 |     547.732µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:16 | 200 |     145.933µs | 172.30.112.1 | GET | /api/incomes | -
+10:01:19 | 200 |     266.341µs | 172.30.112.1 | GET | /api/orders | -
+10:01:19 | 200 |     133.504µs | 172.30.112.1 | GET | /api/orders | -
+10:01:19 | 200 |     246.224µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:19 | 200 |     373.907µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:19 | 200 |     170.926µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:19 | 200 |     272.348µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:28 | 200 |     292.659µs | 172.30.112.1 | GET | /api/orders | -
+10:01:28 | 200 |     212.544µs | 172.30.112.1 | GET | /api/orders | -
+10:01:28 | 200 |     368.204µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:28 | 200 |     225.032µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
+10:01:28 | 200 |     142.624µs | 172.30.112.1 | GET | /api/orders/2/payment-status | -
+10:01:28 | 200 |     167.899µs | 172.30.112.1 | GET | /api/orders/1/payment-status | -
