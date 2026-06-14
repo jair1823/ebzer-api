@@ -178,8 +178,8 @@ func main() {
 	incomesGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Create)
 	incomesGroup.Get("/", incomesHandler.GetAll)
 	incomesGroup.Get("/:id", incomesHandler.GetByID)
-	incomesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Update)
-	incomesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Delete)
+	incomesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), incomesHandler.Update)
+	incomesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), incomesHandler.Delete)
 
 	// ---------------------------------------
 	// Agenda API Setup

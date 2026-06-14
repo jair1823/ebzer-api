@@ -93,10 +93,10 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 
 	err := h.service.Update(c.Context(), id, dto)
 	if err != nil {
-		if err.Error() == "order not found" {
+		if err.Error() == "income not found" {
 			return fiber.NewError(404, err.Error())
 		}
-		return fiber.NewError(500, err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	return c.JSON(fiber.Map{"updated": true})
