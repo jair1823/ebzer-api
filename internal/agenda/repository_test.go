@@ -36,6 +36,8 @@ CREATE TABLE orders (
 	client_phone TEXT,
 	notes TEXT,
 	paid_at TEXT,
+	deleted_at TEXT,
+	deleted_by INTEGER,
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -50,6 +52,8 @@ CREATE TABLE agenda_items (
 	due_date TEXT,
 	completed_at TEXT,
 	order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+	deleted_at TEXT,
+	deleted_by INTEGER,
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -386,18 +390,27 @@ func TestRepositoryUpdate_NotFound(t *testing.T) {
 // -------------------- Delete --------------------
 
 func TestRepositoryDelete(t *testing.T) {
-	_, repo := newTestAgendaRepository(t)
+	db, repo := newTestAgendaRepository(t)
 	ctx, cancel := ctx1s()
 	defer cancel()
 
 	id, _ := repo.Create(ctx, CreateAgendaItemDTO{Title: "Delete me", Type: TypeNote})
-	if err := repo.Delete(ctx, id); err != nil {
+	actorID := 9
+	if err := repo.Delete(ctx, id, &actorID); err != nil {
 		t.Fatalf("Delete returned error: %v", err)
 	}
 
 	item, _ := repo.GetByID(ctx, id)
 	if item != nil {
 		t.Fatal("expected item to be deleted")
+	}
+
+	var deletedBy sql.NullInt64
+	if err := db.QueryRowContext(ctx, "SELECT deleted_by FROM agenda_items WHERE id = $1", id).Scan(&deletedBy); err != nil {
+		t.Fatalf("query deleted_by: %v", err)
+	}
+	if !deletedBy.Valid || deletedBy.Int64 != int64(actorID) {
+		t.Fatalf("expected deleted_by %d, got %#v", actorID, deletedBy)
 	}
 }
 
@@ -406,7 +419,7 @@ func TestRepositoryDelete_NotFound(t *testing.T) {
 	ctx, cancel := ctx1s()
 	defer cancel()
 
-	err := repo.Delete(ctx, 999)
+	err := repo.Delete(ctx, 999, nil)
 	if err == nil || err.Error() != "agenda item not found" {
 		t.Fatalf("expected not found error, got %v", err)
 	}

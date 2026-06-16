@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	internaldb "creaciones-api/internal/db"
@@ -13,10 +14,10 @@ import (
 type Repository interface {
 	Create(ctx context.Context, dto CreateOrderDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Order, error)
-	GetAll(ctx context.Context, statusID *int, from *time.Time, to *time.Time) ([]Order, error)
+	GetAll(ctx context.Context, filter OrderFilter) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error)
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 }
 
 type repository struct {
@@ -69,9 +70,10 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 	LEFT JOIN (
 		SELECT order_id, SUM(amount) AS total_paid
 		FROM income
+		WHERE deleted_at IS NULL
 		GROUP BY order_id
 	) p ON p.order_id = o.id
-	WHERE o.id = $1;
+	WHERE o.id = $1 AND o.deleted_at IS NULL;
 	`, id)
 
 	var o Order
@@ -103,7 +105,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Order, error) {
 
 // -------------------- GET ALL (FILTERS) --------------------
 
-func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time, to *time.Time) ([]Order, error) {
+func (r *repository) GetAll(ctx context.Context, filter OrderFilter) ([]Order, error) {
 	query := `
 	SELECT 
 		o.id, o.description, o.amount_charged, o.status_id, o.entry_date,
@@ -118,33 +120,105 @@ func (r *repository) GetAll(ctx context.Context, statusID *int, from *time.Time,
 	LEFT JOIN (
 		SELECT order_id, SUM(amount) AS total_paid
 		FROM income
+		WHERE deleted_at IS NULL
 		GROUP BY order_id
 	) p ON p.order_id = o.id
-	WHERE 1 = 1
+	WHERE o.deleted_at IS NULL
 	`
 
 	args := []any{}
 	arg := 1
 
-	if statusID != nil {
+	if filter.StatusID != nil {
 		query += fmt.Sprintf(" AND o.status_id = $%d", arg)
-		args = append(args, *statusID)
+		args = append(args, *filter.StatusID)
 		arg++
 	}
 
-	if from != nil {
+	if len(filter.StatusIDs) > 0 {
+		placeholders := make([]string, 0, len(filter.StatusIDs))
+		for _, statusID := range filter.StatusIDs {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", arg))
+			args = append(args, statusID)
+			arg++
+		}
+		query += fmt.Sprintf(" AND o.status_id IN (%s)", strings.Join(placeholders, ", "))
+	}
+
+	if filter.From != nil {
 		query += fmt.Sprintf(" AND o.entry_date >= $%d", arg)
-		args = append(args, *from)
+		args = append(args, *filter.From)
 		arg++
 	}
 
-	if to != nil {
+	if filter.To != nil {
 		query += fmt.Sprintf(" AND o.entry_date <= $%d", arg)
-		args = append(args, *to)
+		args = append(args, *filter.To)
 		arg++
 	}
 
-	query += " ORDER BY o.entry_date DESC;"
+	if filter.Search != nil && strings.TrimSpace(*filter.Search) != "" {
+		term := "%" + strings.ToLower(strings.TrimSpace(*filter.Search)) + "%"
+		query += fmt.Sprintf(
+			" AND (LOWER(o.description) LIKE $%d OR LOWER(COALESCE(o.notes, '')) LIKE $%d OR LOWER(COALESCE(o.client_name, '')) LIKE $%d OR LOWER(COALESCE(o.client_phone, '')) LIKE $%d)",
+			arg, arg+1, arg+2, arg+3,
+		)
+		args = append(args, term, term, term, term)
+		arg += 4
+	}
+
+	if filter.DeliveryFrom != nil {
+		query += fmt.Sprintf(" AND date(o.estimated_delivery_date) >= date($%d)", arg)
+		args = append(args, *filter.DeliveryFrom)
+		arg++
+	}
+
+	if filter.DeliveryTo != nil {
+		query += fmt.Sprintf(" AND date(o.estimated_delivery_date) <= date($%d)", arg)
+		args = append(args, *filter.DeliveryTo)
+		arg++
+	}
+
+	if filter.Platform != nil {
+		query += fmt.Sprintf(" AND o.platform = $%d", arg)
+		args = append(args, *filter.Platform)
+		arg++
+	}
+
+	if filter.AmountMin != nil {
+		query += fmt.Sprintf(" AND o.amount_charged >= $%d", arg)
+		args = append(args, *filter.AmountMin)
+		arg++
+	}
+
+	if filter.AmountMax != nil {
+		query += fmt.Sprintf(" AND o.amount_charged <= $%d", arg)
+		args = append(args, *filter.AmountMax)
+		arg++
+	}
+
+	if filter.PaymentStatus != nil {
+		switch *filter.PaymentStatus {
+		case PaymentStatusFilterUnpaid:
+			query += " AND COALESCE(p.total_paid, 0) <= 0"
+		case PaymentStatusFilterPartial:
+			query += " AND COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_paid, 0) < o.amount_charged"
+		case PaymentStatusFilterPaid:
+			query += " AND COALESCE(p.total_paid, 0) >= o.amount_charged AND COALESCE(p.total_paid, 0) > 0"
+		}
+	}
+
+	if filter.Overdue != nil && *filter.Overdue {
+		today := filter.Today
+		if today.IsZero() {
+			today = time.Now()
+		}
+		query += fmt.Sprintf(" AND o.estimated_delivery_date IS NOT NULL AND date(o.estimated_delivery_date) < date($%d) AND COALESCE(p.total_paid, 0) < o.amount_charged", arg)
+		args = append(args, today.Format("2006-01-02"))
+		arg++
+	}
+
+	query += " ORDER BY datetime(o.entry_date) DESC, o.id DESC;"
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -256,8 +330,12 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateOrderDTO) err
 
 // -------------------- DELETE --------------------
 // TODO: soft delete?
-func (r *repository) Delete(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "DELETE FROM orders WHERE id = $1", id)
+func (r *repository) Delete(ctx context.Context, id int, actorID *int) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE orders
+		SET deleted_at = datetime('now'), deleted_by = $1, updated_at = datetime('now')
+		WHERE id = $2 AND deleted_at IS NULL;
+	`, actorID, id)
 	if err != nil {
 		return err
 	}
@@ -278,7 +356,7 @@ func (r *repository) FinishOrder(ctx context.Context, id int) (*FinishOrderResul
 	defer tx.Rollback()
 
 	var amountCharged float64
-	err = tx.QueryRowContext(ctx, "SELECT amount_charged FROM orders WHERE id = $1", id).Scan(&amountCharged)
+	err = tx.QueryRowContext(ctx, "SELECT amount_charged FROM orders WHERE id = $1 AND deleted_at IS NULL", id).Scan(&amountCharged)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("order not found")
 	}
@@ -287,7 +365,7 @@ func (r *repository) FinishOrder(ctx context.Context, id int) (*FinishOrderResul
 	}
 
 	var currentTotalPaid float64
-	err = tx.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM income WHERE order_id = $1", id).Scan(&currentTotalPaid)
+	err = tx.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM income WHERE order_id = $1 AND deleted_at IS NULL", id).Scan(&currentTotalPaid)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +394,7 @@ func (r *repository) FinishOrder(ctx context.Context, id int) (*FinishOrderResul
 			status_id = (SELECT id FROM order_statuses WHERE name = 'completed'),
 			paid_at = datetime('now'),
 			updated_at = datetime('now')
-		WHERE id = $1;
+		WHERE id = $1 AND deleted_at IS NULL;
 	`, id)
 	if err != nil {
 		return nil, err

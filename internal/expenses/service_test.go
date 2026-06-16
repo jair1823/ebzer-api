@@ -29,7 +29,7 @@ func (r *fakeExpenseRepository) Update(_ context.Context, _ int, dto UpdateExpen
 	return nil
 }
 
-func (r *fakeExpenseRepository) Delete(_ context.Context, _ int) error {
+func (r *fakeExpenseRepository) Delete(_ context.Context, _ int, _ *int) error {
 	return nil
 }
 

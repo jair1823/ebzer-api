@@ -35,16 +35,16 @@ type OrderSummary struct {
 }
 
 type AgendaItem struct {
-	ID          int          `json:"id"`
-	Type        ItemType     `json:"type"`
-	Title       string       `json:"title"`
-	Content     *string      `json:"content"`
-	Status      ItemStatus   `json:"status"`
-	Priority    ItemPriority `json:"priority"`
-	DueDate     *db.NullTime `json:"due_date"`
-	CompletedAt *db.NullTime `json:"completed_at"`
-	OrderID     *int         `json:"order_id"`
+	ID          int           `json:"id"`
+	Type        ItemType      `json:"type"`
+	Title       string        `json:"title"`
+	Content     *string       `json:"content"`
+	Status      ItemStatus    `json:"status"`
+	Priority    ItemPriority  `json:"priority"`
+	DueDate     *db.NullTime  `json:"due_date"`
+	CompletedAt *db.NullTime  `json:"completed_at"`
+	OrderID     *int          `json:"order_id"`
 	Order       *OrderSummary `json:"order,omitempty"`
-	CreatedAt   db.Time      `json:"created_at"`
-	UpdatedAt   db.Time      `json:"updated_at"`
+	CreatedAt   db.Time       `json:"created_at"`
+	UpdatedAt   db.Time       `json:"updated_at"`
 }

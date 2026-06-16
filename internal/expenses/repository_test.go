@@ -41,6 +41,8 @@ func newTestExpenseRepository(t *testing.T) (*sql.DB, Repository) {
 			comercio_id INTEGER NOT NULL REFERENCES comercios(id) ON DELETE RESTRICT,
 			date TEXT NOT NULL DEFAULT (date('now')),
 			description TEXT,
+			deleted_at TEXT,
+			deleted_by INTEGER,
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);
 
@@ -210,6 +212,41 @@ func TestRepositoryDeleteBlocksUsedComerciosAndProducts(t *testing.T) {
 	}
 	if err := repo.DeleteProduct(ctx, 2); err != nil {
 		t.Fatalf("DeleteProduct unused returned error: %v", err)
+	}
+}
+
+func TestRepositoryDeleteSoftDeletesExpense(t *testing.T) {
+	db, repo := newTestExpenseRepository(t)
+	ctx := context.Background()
+
+	id, err := repo.Create(ctx, CreateExpenseDTO{
+		ComercioID: 1,
+		Items: []CreateExpenseItemDTO{
+			{ProductName: "Tela", Quantity: 1, UnitPrice: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	actorID := 5
+	if err := repo.Delete(ctx, id, &actorID); err != nil {
+		t.Fatalf("Delete returned error: %v", err)
+	}
+	expense, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if expense != nil {
+		t.Fatal("expected soft-deleted expense to be hidden")
+	}
+
+	var deletedBy sql.NullInt64
+	if err := db.QueryRowContext(ctx, "SELECT deleted_by FROM expenses WHERE id = $1", id).Scan(&deletedBy); err != nil {
+		t.Fatalf("query deleted_by: %v", err)
+	}
+	if !deletedBy.Valid || deletedBy.Int64 != int64(actorID) {
+		t.Fatalf("expected deleted_by %d, got %#v", actorID, deletedBy)
 	}
 }
 

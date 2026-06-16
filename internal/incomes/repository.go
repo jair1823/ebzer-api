@@ -14,7 +14,7 @@ type Repository interface {
 	GetAll(ctx context.Context, from *time.Time, to *time.Time) ([]Income, error)
 	GetByOrderID(ctx context.Context, orderID int) ([]Income, error)
 	Update(ctx context.Context, id int, dto UpdateIncomeDTO) error
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 }
 
 type repository struct {
@@ -52,7 +52,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Income, error) {
 		id, order_id, amount, date,
 		created_at, updated_at
 	FROM income
-	WHERE id = $1;
+	WHERE id = $1 AND deleted_at IS NULL;
 	`, id)
 
 	var o Income
@@ -76,7 +76,7 @@ func (r *repository) GetAll(ctx context.Context, from *time.Time, to *time.Time)
 		id, order_id, amount, date,
 		created_at, updated_at
 	FROM income
-	WHERE 1 = 1
+	WHERE deleted_at IS NULL
 	`
 
 	args := []any{}
@@ -128,7 +128,7 @@ func (r *repository) GetByOrderID(ctx context.Context, orderID int) ([]Income, e
 		id, order_id, amount, date,
 		created_at, updated_at
 	FROM income
-	WHERE order_id = $1
+	WHERE order_id = $1 AND deleted_at IS NULL
 	ORDER BY date DESC;
 	`
 
@@ -165,7 +165,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateIncomeDTO) er
 		amount = COALESCE($2, amount),
 		date = COALESCE($3, date),
 		updated_at = datetime('now')
-	WHERE id = $4;
+	WHERE id = $4 AND deleted_at IS NULL;
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -187,9 +187,12 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateIncomeDTO) er
 }
 
 // -------------------- DELETE --------------------
-// TODO: soft delete?
-func (r *repository) Delete(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "DELETE FROM income WHERE id = $1", id)
+func (r *repository) Delete(ctx context.Context, id int, actorID *int) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE income
+		SET deleted_at = datetime('now'), deleted_by = $1, updated_at = datetime('now')
+		WHERE id = $2 AND deleted_at IS NULL;
+	`, actorID, id)
 	if err != nil {
 		return err
 	}

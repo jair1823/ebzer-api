@@ -11,10 +11,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"creaciones-api/internal/agenda"
+	"creaciones-api/internal/audit"
 	"creaciones-api/internal/auth"
 	"creaciones-api/internal/db"
 	"creaciones-api/internal/expenses"
 	"creaciones-api/internal/incomes"
+	"creaciones-api/internal/insights"
 	"creaciones-api/internal/orders"
 )
 
@@ -71,11 +73,13 @@ func main() {
 	// ---------------------------------------
 
 	app.Use(logger.New()) // Logs every request
+	app.Use(securityHeaders())
 
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization, X-API-Key",
-	}))
+	corsConfig, err := corsConfigFromEnv()
+	if err != nil {
+		log.Fatalf("Invalid CORS configuration: %v", err)
+	}
+	app.Use(cors.New(corsConfig))
 
 	// ---------------------------------------
 	// Health Check
@@ -115,12 +119,16 @@ func main() {
 	statusRepo := orders.NewStatusRepository(conn)
 	incomesRepo := incomes.NewRepository(conn)
 	expensesRepo := expenses.NewRepository(conn)
+	auditRepo := audit.NewRepository(conn)
+	insightsRepo := insights.NewRepository(conn)
 
 	statusService := orders.NewStatusService(statusRepo)
 	ordersService := orders.NewService(ordersRepo)
 
 	statusHandler := orders.NewStatusHandler(statusService)
-	ordersHandler := orders.NewHandler(ordersService)
+	ordersHandler := orders.NewHandler(ordersService, auditRepo)
+	auditHandler := audit.NewHandler(auditRepo)
+	insightsHandler := insights.NewHandler(insights.NewService(insightsRepo))
 
 	api := app.Group("/api")
 	// API key guard — set API_KEY env var to enable; skipped if unset (dev mode)
@@ -136,8 +144,10 @@ func main() {
 			return c.Next()
 		})
 	}
+	api.Use(rateLimiterFromEnv("RATE_LIMIT_GENERAL", defaultGeneralLimit))
 
 	authGroup := api.Group("/auth")
+	authGroup.Use(rateLimiterFromEnv("RATE_LIMIT_AUTH", defaultAuthLimit))
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/refresh", authHandler.Refresh)
 
@@ -152,6 +162,12 @@ func main() {
 	usersGroup.Get("/:id", authHandler.GetUser)
 	usersGroup.Put("/:id", authHandler.UpdateUser)
 	usersGroup.Delete("/:id", authHandler.DeactivateUser)
+
+	auditGroup := api.Group("/audit-events", auth.RequireRole(auth.RoleAdmin))
+	auditGroup.Get("/", auditHandler.GetAll)
+
+	insightsGroup := api.Group("/insights")
+	insightsGroup.Get("/summary", insightsHandler.Summary)
 
 	statusGroup := api.Group("/order-statuses")
 	statusGroup.Put("/reorder", auth.RequireRole(auth.RoleAdmin), statusHandler.Reorder)
@@ -174,7 +190,7 @@ func main() {
 	// Incomes API Setup
 	// ---------------------------------------
 	incomesService := incomes.NewService(incomesRepo)
-	incomesHandler := incomes.NewHandler(incomesService)
+	incomesHandler := incomes.NewHandler(incomesService, auditRepo)
 
 	incomesGroup := api.Group("/incomes")
 	incomesGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Create)
@@ -187,7 +203,7 @@ func main() {
 	// Expenses API Setup
 	// ---------------------------------------
 	expensesService := expenses.NewService(expensesRepo)
-	expensesHandler := expenses.NewHandler(expensesService)
+	expensesHandler := expenses.NewHandler(expensesService, auditRepo)
 
 	expensesGroup := api.Group("/expenses")
 	expensesGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), expensesHandler.Create)
@@ -213,7 +229,7 @@ func main() {
 	// ---------------------------------------
 	agendaRepo := agenda.NewRepository(conn)
 	agendaService := agenda.NewService(agendaRepo)
-	agendaHandler := agenda.NewHandler(agendaService)
+	agendaHandler := agenda.NewHandler(agendaService, auditRepo)
 
 	agendaGroup := api.Group("/agenda-items")
 	agendaGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), agendaHandler.Create)

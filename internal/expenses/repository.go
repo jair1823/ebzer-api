@@ -13,7 +13,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id int) (*Expense, error)
 	GetAll(ctx context.Context, from, to *string, comercioID *int) ([]Expense, error)
 	Update(ctx context.Context, id int, dto UpdateExpenseDTO) error
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 	ComercioExists(ctx context.Context, id int) (bool, error)
 	CreateComercio(ctx context.Context, dto CreateComercioDTO) (int, error)
 	GetComercios(ctx context.Context) ([]Comercio, error)
@@ -69,7 +69,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Expense, error) {
 		FROM expenses e
 		INNER JOIN comercios c ON c.id = e.comercio_id
 		LEFT JOIN expense_items ei ON ei.expense_id = e.id
-		WHERE e.id = $1
+		WHERE e.id = $1 AND e.deleted_at IS NULL
 		GROUP BY e.id, c.id;
 	`, id)
 
@@ -99,7 +99,7 @@ func (r *repository) GetAll(ctx context.Context, from, to *string, comercioID *i
 		FROM expenses e
 		INNER JOIN comercios c ON c.id = e.comercio_id
 		LEFT JOIN expense_items ei ON ei.expense_id = e.id
-		WHERE 1 = 1
+		WHERE e.deleted_at IS NULL
 	`
 
 	args := []any{}
@@ -167,7 +167,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateExpenseDTO) e
 		SET comercio_id = $1,
 			date = COALESCE($2, date),
 			description = $3
-		WHERE id = $4;
+		WHERE id = $4 AND deleted_at IS NULL;
 	`, dto.ComercioID, dto.Date, dto.Description, id)
 	if err != nil {
 		return err
@@ -187,8 +187,12 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateExpenseDTO) e
 	return tx.Commit()
 }
 
-func (r *repository) Delete(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "DELETE FROM expenses WHERE id = $1", id)
+func (r *repository) Delete(ctx context.Context, id int, actorID *int) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE expenses
+		SET deleted_at = datetime('now'), deleted_by = $1
+		WHERE id = $2 AND deleted_at IS NULL;
+	`, actorID, id)
 	if err != nil {
 		return err
 	}
