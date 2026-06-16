@@ -30,7 +30,7 @@ func NewRepository(db *sql.DB) Repository {
 func (r *repository) Create(ctx context.Context, dto CreateIncomeDTO) (int, error) {
 	query := `
 	INSERT INTO income (order_id, amount, date)
-	VALUES ($1, $2, datetime('now'))
+	VALUES ($1, $2, COALESCE($3, datetime('now')))
 	RETURNING id;
 	`
 
@@ -38,6 +38,7 @@ func (r *repository) Create(ctx context.Context, dto CreateIncomeDTO) (int, erro
 	err := r.db.QueryRowContext(ctx, query,
 		dto.OrderID,
 		dto.Amount,
+		dto.Date,
 	).Scan(&id)
 
 	return id, err
@@ -162,13 +163,15 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateIncomeDTO) er
 	UPDATE income SET
 		order_id = COALESCE($1, order_id),
 		amount = COALESCE($2, amount),
+		date = COALESCE($3, date),
 		updated_at = datetime('now')
-	WHERE id = $3;
+	WHERE id = $4;
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
 		dto.OrderID,
 		dto.Amount,
+		dto.Date,
 		id,
 	)
 

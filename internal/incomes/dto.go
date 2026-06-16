@@ -33,9 +33,11 @@ func (c *CustomFloat64) UnmarshalJSON(data []byte) error {
 type CreateIncomeDTO struct {
 	OrderID int           `json:"order_id"`
 	Amount  CustomFloat64 `json:"amount"`
+	Date    *string       `json:"date"`
 }
 
 type UpdateIncomeDTO struct {
 	OrderID *int           `json:"order_id"`
 	Amount  *CustomFloat64 `json:"amount"`
+	Date    *string        `json:"date"`
 }

@@ -13,6 +13,7 @@ import (
 	"creaciones-api/internal/agenda"
 	"creaciones-api/internal/auth"
 	"creaciones-api/internal/db"
+	"creaciones-api/internal/expenses"
 	"creaciones-api/internal/incomes"
 	"creaciones-api/internal/orders"
 )
@@ -113,6 +114,7 @@ func main() {
 	ordersRepo := orders.NewRepository(conn)
 	statusRepo := orders.NewStatusRepository(conn)
 	incomesRepo := incomes.NewRepository(conn)
+	expensesRepo := expenses.NewRepository(conn)
 
 	statusService := orders.NewStatusService(statusRepo)
 	ordersService := orders.NewService(ordersRepo)
@@ -178,8 +180,33 @@ func main() {
 	incomesGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Create)
 	incomesGroup.Get("/", incomesHandler.GetAll)
 	incomesGroup.Get("/:id", incomesHandler.GetByID)
-	incomesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Update)
-	incomesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), incomesHandler.Delete)
+	incomesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), incomesHandler.Update)
+	incomesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), incomesHandler.Delete)
+
+	// ---------------------------------------
+	// Expenses API Setup
+	// ---------------------------------------
+	expensesService := expenses.NewService(expensesRepo)
+	expensesHandler := expenses.NewHandler(expensesService)
+
+	expensesGroup := api.Group("/expenses")
+	expensesGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), expensesHandler.Create)
+	expensesGroup.Get("/", expensesHandler.GetAll)
+	expensesGroup.Get("/:id", expensesHandler.GetByID)
+	expensesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.Update)
+	expensesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.Delete)
+
+	comerciosGroup := api.Group("/comercios")
+	comerciosGroup.Get("/", expensesHandler.GetComercios)
+	comerciosGroup.Post("/", auth.RequireRole(auth.RoleAdmin), expensesHandler.CreateComercio)
+	comerciosGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.UpdateComercio)
+	comerciosGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.DeleteComercio)
+
+	productsGroup := api.Group("/products")
+	productsGroup.Get("/", expensesHandler.GetProducts)
+	productsGroup.Post("/", auth.RequireRole(auth.RoleAdmin), expensesHandler.CreateProduct)
+	productsGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.UpdateProduct)
+	productsGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.DeleteProduct)
 
 	// ---------------------------------------
 	// Agenda API Setup
