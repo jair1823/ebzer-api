@@ -14,7 +14,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id int) (*AgendaItem, error)
 	GetAll(ctx context.Context, filter FilterAgendaItemsDTO) ([]AgendaItem, error)
 	Update(ctx context.Context, id int, dto UpdateAgendaItemDTO) error
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 	Complete(ctx context.Context, id int) error
 	Archive(ctx context.Context, id int) error
 }
@@ -69,7 +69,7 @@ func (r *repository) GetByID(ctx context.Context, id int) (*AgendaItem, error) {
 		o.estimated_delivery_date, o.status_id
 	FROM agenda_items a
 	LEFT JOIN orders o ON o.id = a.order_id
-	WHERE a.id = $1;
+	WHERE a.id = $1 AND a.deleted_at IS NULL;
 	`, id)
 
 	return scanAgendaItem(row)
@@ -87,7 +87,7 @@ func (r *repository) GetAll(ctx context.Context, filter FilterAgendaItemsDTO) ([
 		o.estimated_delivery_date, o.status_id
 	FROM agenda_items a
 	LEFT JOIN orders o ON o.id = a.order_id
-	WHERE 1 = 1
+	WHERE a.deleted_at IS NULL
 	`
 
 	args := []any{}
@@ -173,7 +173,7 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateAgendaItemDTO
 		due_date    = COALESCE($6, due_date),
 		order_id    = COALESCE($7, order_id),
 		updated_at  = datetime('now')
-	WHERE id = $8;
+	WHERE id = $8 AND deleted_at IS NULL;
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -199,8 +199,12 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateAgendaItemDTO
 
 // -------------------- DELETE --------------------
 
-func (r *repository) Delete(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, "DELETE FROM agenda_items WHERE id = $1", id)
+func (r *repository) Delete(ctx context.Context, id int, actorID *int) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE agenda_items
+		SET deleted_at = datetime('now'), deleted_by = $1, updated_at = datetime('now')
+		WHERE id = $2 AND deleted_at IS NULL;
+	`, actorID, id)
 	if err != nil {
 		return err
 	}
@@ -220,7 +224,7 @@ func (r *repository) Complete(ctx context.Context, id int) error {
 		status       = 'done',
 		completed_at = datetime('now'),
 		updated_at   = datetime('now')
-	WHERE id = $1;
+	WHERE id = $1 AND deleted_at IS NULL;
 	`, id)
 	if err != nil {
 		return err
@@ -240,7 +244,7 @@ func (r *repository) Archive(ctx context.Context, id int) error {
 	UPDATE agenda_items SET
 		status     = 'archived',
 		updated_at = datetime('now')
-	WHERE id = $1;
+	WHERE id = $1 AND deleted_at IS NULL;
 	`, id)
 	if err != nil {
 		return err

@@ -12,7 +12,7 @@ type Service interface {
 	GetByID(ctx context.Context, id int) (*Income, error)
 	GetAll(ctx context.Context, from, to *string) ([]Income, error)
 	Update(ctx context.Context, id int, dto UpdateIncomeDTO) error
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 }
 
 type service struct {
@@ -96,11 +96,11 @@ func (s *service) Update(ctx context.Context, id int, dto UpdateIncomeDTO) error
 
 // -------------------- Delete --------------------
 
-func (s *service) Delete(ctx context.Context, id int) error {
+func (s *service) Delete(ctx context.Context, id int, actorID *int) error {
 	if id <= 0 {
 		return errors.New("income ID is required and must be > 0")
 	}
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, id, actorID)
 }
 
 func normalizeIncomeDate(date *string) (*string, error) {

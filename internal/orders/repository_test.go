@@ -49,6 +49,8 @@ func newTestOrderRepository(t *testing.T) (*sql.DB, Repository) {
 		client_phone TEXT,
 		notes TEXT,
 		paid_at TEXT,
+		deleted_at TEXT,
+		deleted_by INTEGER,
 		created_at TEXT NOT NULL DEFAULT (datetime('now')),
 		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 	);
@@ -58,6 +60,8 @@ func newTestOrderRepository(t *testing.T) (*sql.DB, Repository) {
 		order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
 		amount REAL NOT NULL,
 		date TEXT NOT NULL DEFAULT (datetime('now')),
+		deleted_at TEXT,
+		deleted_by INTEGER,
 		created_at TEXT NOT NULL DEFAULT (datetime('now')),
 		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 	);
@@ -89,7 +93,7 @@ func TestRepositoryGetAllPopulatesStatusWithSingleConnection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	orders, err := repo.GetAll(ctx, nil, nil, nil)
+	orders, err := repo.GetAll(ctx, OrderFilter{})
 	if err != nil {
 		t.Fatalf("GetAll returned error: %v", err)
 	}
@@ -135,7 +139,7 @@ func TestRepositoryGetAllPopulatesPaymentStatus(t *testing.T) {
 		t.Fatalf("seed income: %v", err)
 	}
 
-	orders, err := repo.GetAll(ctx, nil, nil, nil)
+	orders, err := repo.GetAll(ctx, OrderFilter{})
 	if err != nil {
 		t.Fatalf("GetAll returned error: %v", err)
 	}
@@ -184,7 +188,7 @@ func TestRepositoryGetAllFiltersByStatusIDAndReturnsEmptyList(t *testing.T) {
 	defer cancel()
 
 	completedStatusID := 2
-	orders, err := repo.GetAll(ctx, &completedStatusID, nil, nil)
+	orders, err := repo.GetAll(ctx, OrderFilter{StatusID: &completedStatusID})
 	if err != nil {
 		t.Fatalf("GetAll filtered returned error: %v", err)
 	}
@@ -196,12 +200,121 @@ func TestRepositoryGetAllFiltersByStatusIDAndReturnsEmptyList(t *testing.T) {
 	}
 
 	missingStatusID := 999
-	orders, err = repo.GetAll(ctx, &missingStatusID, nil, nil)
+	orders, err = repo.GetAll(ctx, OrderFilter{StatusID: &missingStatusID})
 	if err != nil {
 		t.Fatalf("GetAll empty filter returned error: %v", err)
 	}
 	if len(orders) != 0 {
 		t.Fatalf("expected empty order list, got %d", len(orders))
+	}
+}
+
+func TestRepositoryGetAllAdvancedFilters(t *testing.T) {
+	db, repo := newTestOrderRepository(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(ctx, `
+		UPDATE orders
+		SET estimated_delivery_date = '2026-06-01', platform = 'instagram',
+			client_phone = '555-1111', notes = 'Urgent embroidery'
+		WHERE id = 1;
+		UPDATE orders
+		SET estimated_delivery_date = '2026-06-20', platform = 'facebook'
+		WHERE id = 2;
+		INSERT INTO income (order_id, amount) VALUES (1, 10.00), (2, 80.00);
+	`); err != nil {
+		t.Fatalf("seed advanced filters: %v", err)
+	}
+
+	search := "embroidery"
+	orders, err := repo.GetAll(ctx, OrderFilter{Search: &search})
+	if err != nil {
+		t.Fatalf("GetAll search returned error: %v", err)
+	}
+	if len(orders) != 1 || orders[0].ID != 1 {
+		t.Fatalf("expected search to return order 1, got %#v", orders)
+	}
+
+	platform := PlatformInstagram
+	orders, err = repo.GetAll(ctx, OrderFilter{Platform: &platform})
+	if err != nil {
+		t.Fatalf("GetAll platform returned error: %v", err)
+	}
+	if len(orders) != 1 || orders[0].Platform != PlatformInstagram {
+		t.Fatalf("expected instagram order, got %#v", orders)
+	}
+
+	partial := PaymentStatusFilterPartial
+	orders, err = repo.GetAll(ctx, OrderFilter{PaymentStatus: &partial})
+	if err != nil {
+		t.Fatalf("GetAll partial payment returned error: %v", err)
+	}
+	if len(orders) != 1 || orders[0].ID != 1 {
+		t.Fatalf("expected partial payment order 1, got %#v", orders)
+	}
+
+	paid := PaymentStatusFilterPaid
+	orders, err = repo.GetAll(ctx, OrderFilter{PaymentStatus: &paid})
+	if err != nil {
+		t.Fatalf("GetAll paid payment returned error: %v", err)
+	}
+	if len(orders) != 1 || orders[0].ID != 2 {
+		t.Fatalf("expected paid order 2, got %#v", orders)
+	}
+
+	overdue := true
+	orders, err = repo.GetAll(ctx, OrderFilter{
+		Overdue: &overdue,
+		Today:   time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("GetAll overdue returned error: %v", err)
+	}
+	if len(orders) != 1 || orders[0].ID != 1 {
+		t.Fatalf("expected overdue order 1, got %#v", orders)
+	}
+
+	amountMin := 50.0
+	orders, err = repo.GetAll(ctx, OrderFilter{AmountMin: &amountMin})
+	if err != nil {
+		t.Fatalf("GetAll amount_min returned error: %v", err)
+	}
+	if len(orders) != 1 || orders[0].ID != 2 {
+		t.Fatalf("expected amount_min to return order 2, got %#v", orders)
+	}
+}
+
+func TestRepositoryDeleteSoftDeletesOrder(t *testing.T) {
+	db, repo := newTestOrderRepository(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	actorID := 7
+	if err := repo.Delete(ctx, 1, &actorID); err != nil {
+		t.Fatalf("Delete returned error: %v", err)
+	}
+
+	order, err := repo.GetByID(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if order != nil {
+		t.Fatal("expected soft-deleted order to be hidden")
+	}
+
+	var deletedAt sql.NullString
+	var deletedBy sql.NullInt64
+	if err := db.QueryRowContext(ctx, "SELECT deleted_at, deleted_by FROM orders WHERE id = 1").Scan(&deletedAt, &deletedBy); err != nil {
+		t.Fatalf("query soft-deleted row: %v", err)
+	}
+	if !deletedAt.Valid || deletedAt.String == "" {
+		t.Fatal("expected deleted_at to be set")
+	}
+	if !deletedBy.Valid || deletedBy.Int64 != int64(actorID) {
+		t.Fatalf("expected deleted_by %d, got %#v", actorID, deletedBy)
 	}
 }
 

@@ -1,6 +1,8 @@
 package incomes
 
 import (
+	"creaciones-api/internal/audit"
+	"creaciones-api/internal/auth"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,10 +10,15 @@ import (
 
 type Handler struct {
 	service Service
+	audit   audit.Repository
 }
 
-func NewHandler(s Service) *Handler {
-	return &Handler{service: s}
+func NewHandler(s Service, auditRepo ...audit.Repository) *Handler {
+	handler := &Handler{service: s}
+	if len(auditRepo) > 0 {
+		handler.audit = auditRepo[0]
+	}
+	return handler
 }
 
 func (h *Handler) RegisterRoutes(router fiber.Router) {
@@ -34,6 +41,17 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	id, err := h.service.Create(c.Context(), dto)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	if h.audit != nil {
+		after, _ := h.service.GetByID(c.Context(), id)
+		_ = h.audit.Record(c.Context(), audit.CreateEventDTO{
+			EntityType: "income",
+			EntityID:   id,
+			Action:     "create",
+			Actor:      actorFromContext(c),
+			Summary:    "Ingreso creado",
+			After:      after,
+		})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"id": id})
@@ -85,6 +103,7 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 
 func (h *Handler) Update(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(c.Params("id"))
+	before, _ := h.service.GetByID(c.Context(), id)
 
 	var dto UpdateIncomeDTO
 	if err := c.BodyParser(&dto); err != nil {
@@ -98,6 +117,18 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
+	if h.audit != nil {
+		after, _ := h.service.GetByID(c.Context(), id)
+		_ = h.audit.Record(c.Context(), audit.CreateEventDTO{
+			EntityType: "income",
+			EntityID:   id,
+			Action:     "update",
+			Actor:      actorFromContext(c),
+			Summary:    "Ingreso actualizado",
+			Before:     before,
+			After:      after,
+		})
+	}
 
 	return c.JSON(fiber.Map{"updated": true})
 }
@@ -106,14 +137,36 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 
 func (h *Handler) Delete(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(c.Params("id"))
+	before, _ := h.service.GetByID(c.Context(), id)
+	actor := actorFromContext(c)
 
-	err := h.service.Delete(c.Context(), id)
+	err := h.service.Delete(c.Context(), id, actor.UserID)
 	if err != nil {
 		if err.Error() == "income not found" {
 			return fiber.NewError(404, "income not found")
 		}
 		return fiber.NewError(500, err.Error())
 	}
+	if h.audit != nil {
+		_ = h.audit.Record(c.Context(), audit.CreateEventDTO{
+			EntityType: "income",
+			EntityID:   id,
+			Action:     "delete",
+			Actor:      actor,
+			Summary:    "Ingreso eliminado",
+			Before:     before,
+		})
+	}
 
 	return c.JSON(fiber.Map{"deleted": true})
+}
+
+func actorFromContext(c *fiber.Ctx) audit.Actor {
+	user, ok := auth.CurrentUser(c)
+	if !ok || user == nil {
+		return audit.Actor{}
+	}
+	id := user.ID
+	username := user.Username
+	return audit.Actor{UserID: &id, Username: &username}
 }

@@ -34,6 +34,8 @@ func newTestIncomeRepository(t *testing.T) (*sql.DB, Repository) {
 		order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
 		amount REAL NOT NULL,
 		date TEXT NOT NULL DEFAULT (datetime('now')),
+		deleted_at TEXT,
+		deleted_by INTEGER,
 		created_at TEXT NOT NULL DEFAULT (datetime('now')),
 		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 	);
@@ -123,11 +125,42 @@ func TestRepositoryDeleteMissingReturnsIncomeNotFound(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := repo.Delete(ctx, 999)
+	err := repo.Delete(ctx, 999, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 	if err.Error() != "income not found" {
 		t.Fatalf("expected income not found, got %q", err.Error())
+	}
+}
+
+func TestRepositoryDeleteSoftDeletesIncome(t *testing.T) {
+	db, repo := newTestIncomeRepository(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(ctx, "INSERT INTO income (id, order_id, amount) VALUES (1, 1, 10.00)"); err != nil {
+		t.Fatalf("seed income: %v", err)
+	}
+
+	actorID := 3
+	if err := repo.Delete(ctx, 1, &actorID); err != nil {
+		t.Fatalf("Delete returned error: %v", err)
+	}
+	income, err := repo.GetByID(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if income != nil {
+		t.Fatal("expected soft-deleted income to be hidden")
+	}
+
+	var deletedBy sql.NullInt64
+	if err := db.QueryRowContext(ctx, "SELECT deleted_by FROM income WHERE id = 1").Scan(&deletedBy); err != nil {
+		t.Fatalf("query deleted_by: %v", err)
+	}
+	if !deletedBy.Valid || deletedBy.Int64 != int64(actorID) {
+		t.Fatalf("expected deleted_by %d, got %#v", actorID, deletedBy)
 	}
 }

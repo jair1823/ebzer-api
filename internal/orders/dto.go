@@ -55,6 +55,45 @@ type UpdateOrderDTO struct {
 	Notes                 *string        `json:"notes"`
 }
 
+type PaymentStatusFilter string
+
+const (
+	PaymentStatusFilterUnpaid  PaymentStatusFilter = "unpaid"
+	PaymentStatusFilterPartial PaymentStatusFilter = "partial"
+	PaymentStatusFilterPaid    PaymentStatusFilter = "paid"
+)
+
+type OrderFilterDTO struct {
+	StatusID      *int
+	StatusIDs     []int
+	From          *string
+	To            *string
+	Search        *string
+	DeliveryFrom  *string
+	DeliveryTo    *string
+	Platform      *Platform
+	PaymentStatus *PaymentStatusFilter
+	Overdue       *bool
+	AmountMin     *float64
+	AmountMax     *float64
+}
+
+type OrderFilter struct {
+	StatusID      *int
+	StatusIDs     []int
+	From          *time.Time
+	To            *time.Time
+	Search        *string
+	DeliveryFrom  *time.Time
+	DeliveryTo    *time.Time
+	Platform      *Platform
+	PaymentStatus *PaymentStatusFilter
+	Overdue       *bool
+	AmountMin     *float64
+	AmountMax     *float64
+	Today         time.Time
+}
+
 // ---- Order Status DTOs ----
 
 type CreateOrderStatusDTO struct {

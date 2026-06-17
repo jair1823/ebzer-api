@@ -11,7 +11,7 @@ type Service interface {
 	GetByID(ctx context.Context, id int) (*AgendaItem, error)
 	GetAll(ctx context.Context, filter FilterAgendaItemsDTO) ([]AgendaItem, error)
 	Update(ctx context.Context, id int, dto UpdateAgendaItemDTO) error
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 	Complete(ctx context.Context, id int) error
 	Archive(ctx context.Context, id int) error
 }
@@ -127,8 +127,8 @@ func (s *service) Update(ctx context.Context, id int, dto UpdateAgendaItemDTO) e
 
 // -------------------- Delete --------------------
 
-func (s *service) Delete(ctx context.Context, id int) error {
-	return s.repo.Delete(ctx, id)
+func (s *service) Delete(ctx context.Context, id int, actorID *int) error {
+	return s.repo.Delete(ctx, id, actorID)
 }
 
 // -------------------- Complete --------------------

@@ -38,7 +38,7 @@ func (f *fakeRepo) Update(ctx context.Context, id int, dto UpdateAgendaItemDTO) 
 	return nil
 }
 
-func (f *fakeRepo) Delete(ctx context.Context, id int) error {
+func (f *fakeRepo) Delete(ctx context.Context, id int, actorID *int) error {
 	return nil
 }
 

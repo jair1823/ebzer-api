@@ -3,7 +3,6 @@ package orders
 import (
 	"context"
 	"testing"
-	"time"
 )
 
 // fakeRepo implements Repository for tests
@@ -23,7 +22,7 @@ func (f *fakeRepo) GetByID(ctx context.Context, id int) (*Order, error) {
 	return nil, nil
 }
 
-func (f *fakeRepo) GetAll(ctx context.Context, statusID *int, from *time.Time, to *time.Time) ([]Order, error) {
+func (f *fakeRepo) GetAll(ctx context.Context, filter OrderFilter) ([]Order, error) {
 	return nil, nil
 }
 
@@ -36,7 +35,7 @@ func (f *fakeRepo) FinishOrder(ctx context.Context, id int) (*FinishOrderResult,
 	return &FinishOrderResult{Finished: true}, nil
 }
 
-func (f *fakeRepo) Delete(ctx context.Context, id int) error {
+func (f *fakeRepo) Delete(ctx context.Context, id int, actorID *int) error {
 	return nil
 }
 

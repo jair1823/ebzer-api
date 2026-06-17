@@ -13,7 +13,7 @@ type Service interface {
 	GetByID(ctx context.Context, id int) (*Expense, error)
 	GetAll(ctx context.Context, from, to, comercioID *string) ([]Expense, error)
 	Update(ctx context.Context, id int, dto UpdateExpenseDTO) error
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 	CreateComercio(ctx context.Context, dto CreateComercioDTO) (int, error)
 	GetComercios(ctx context.Context) ([]Comercio, error)
 	UpdateComercio(ctx context.Context, id int, dto UpdateComercioDTO) error
@@ -83,11 +83,11 @@ func (s *service) Update(ctx context.Context, id int, dto UpdateExpenseDTO) erro
 	return err
 }
 
-func (s *service) Delete(ctx context.Context, id int) error {
+func (s *service) Delete(ctx context.Context, id int, actorID *int) error {
 	if id <= 0 {
 		return errors.New("expense ID is required and must be > 0")
 	}
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, id, actorID)
 }
 
 func (s *service) CreateComercio(ctx context.Context, dto CreateComercioDTO) (int, error) {

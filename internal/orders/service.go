@@ -9,10 +9,10 @@ import (
 type Service interface {
 	Create(ctx context.Context, dto CreateOrderDTO) (int, error)
 	GetByID(ctx context.Context, id int) (*Order, error)
-	GetAll(ctx context.Context, statusID *int, from, to *string) ([]Order, error)
+	GetAll(ctx context.Context, filter OrderFilterDTO) ([]Order, error)
 	Update(ctx context.Context, id int, dto UpdateOrderDTO) error
 	FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error)
-	Delete(ctx context.Context, id int) error
+	Delete(ctx context.Context, id int, actorID *int) error
 	GetPaymentStatus(ctx context.Context, orderID int) (*PaymentStatus, error)
 }
 
@@ -53,30 +53,34 @@ func (s *service) GetByID(ctx context.Context, id int) (*Order, error) {
 
 // -------------------- GetAll with filters --------------------
 
-func (s *service) GetAll(ctx context.Context, statusID *int, fromStr, toStr *string) ([]Order, error) {
-
-	var from *time.Time
-	var to *time.Time
-
-	// Parse from
-	if fromStr != nil {
-		t, err := time.Parse("2006-01-02", *fromStr)
-		if err != nil {
-			return nil, errors.New("invalid from date (expected format: YYYY-MM-DD)")
-		}
-		from = &t
+func (s *service) GetAll(ctx context.Context, filterDTO OrderFilterDTO) ([]Order, error) {
+	filter := OrderFilter{
+		StatusID:      filterDTO.StatusID,
+		StatusIDs:     filterDTO.StatusIDs,
+		Search:        filterDTO.Search,
+		Platform:      filterDTO.Platform,
+		PaymentStatus: filterDTO.PaymentStatus,
+		Overdue:       filterDTO.Overdue,
+		AmountMin:     filterDTO.AmountMin,
+		AmountMax:     filterDTO.AmountMax,
+		Today:         time.Now(),
 	}
 
-	// Parse to
-	if toStr != nil {
-		t, err := time.Parse("2006-01-02", *toStr)
-		if err != nil {
-			return nil, errors.New("invalid to date (expected format: YYYY-MM-DD)")
-		}
-		to = &t
+	var err error
+	if filter.From, err = parseDatePtr(filterDTO.From, "from"); err != nil {
+		return nil, err
+	}
+	if filter.To, err = parseDatePtr(filterDTO.To, "to"); err != nil {
+		return nil, err
+	}
+	if filter.DeliveryFrom, err = parseDatePtr(filterDTO.DeliveryFrom, "delivery_from"); err != nil {
+		return nil, err
+	}
+	if filter.DeliveryTo, err = parseDatePtr(filterDTO.DeliveryTo, "delivery_to"); err != nil {
+		return nil, err
 	}
 
-	return s.repo.GetAll(ctx, statusID, from, to)
+	return s.repo.GetAll(ctx, filter)
 }
 
 // -------------------- Update --------------------
@@ -87,14 +91,25 @@ func (s *service) Update(ctx context.Context, id int, dto UpdateOrderDTO) error 
 
 // -------------------- Delete --------------------
 
-func (s *service) Delete(ctx context.Context, id int) error {
-	return s.repo.Delete(ctx, id)
+func (s *service) Delete(ctx context.Context, id int, actorID *int) error {
+	return s.repo.Delete(ctx, id, actorID)
 }
 
 // -------------------- Finish Order --------------------
 
 func (s *service) FinishOrder(ctx context.Context, id int) (*FinishOrderResult, error) {
 	return s.repo.FinishOrder(ctx, id)
+}
+
+func parseDatePtr(value *string, field string) (*time.Time, error) {
+	if value == nil || *value == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", *value)
+	if err != nil {
+		return nil, errors.New("invalid " + field + " date (expected format: YYYY-MM-DD)")
+	}
+	return &t, nil
 }
 
 // -------------------- Get Payment Status --------------------
