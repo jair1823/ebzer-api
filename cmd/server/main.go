@@ -212,11 +212,11 @@ func main() {
 	expensesGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.Update)
 	expensesGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.Delete)
 
-	comerciosGroup := api.Group("/comercios")
-	comerciosGroup.Get("/", expensesHandler.GetComercios)
-	comerciosGroup.Post("/", auth.RequireRole(auth.RoleAdmin), expensesHandler.CreateComercio)
-	comerciosGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.UpdateComercio)
-	comerciosGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.DeleteComercio)
+comerciosGroup := api.Group("/comercios")
+comerciosGroup.Get("/", expensesHandler.GetComercios)
+comerciosGroup.Post("/", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), expensesHandler.CreateComercio)
+comerciosGroup.Put("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.UpdateComercio)
+comerciosGroup.Delete("/:id", auth.RequireRole(auth.RoleAdmin), expensesHandler.DeleteComercio)
 
 	productsGroup := api.Group("/products")
 	productsGroup.Get("/", expensesHandler.GetProducts)
