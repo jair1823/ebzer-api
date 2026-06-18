@@ -23,19 +23,34 @@ case "$1" in
       exit 1
     fi
     
-    nohup env CGO_ENABLED=1 go run cmd/server/main.go > server.log 2>&1 &
+    nohup env CGO_ENABLED=1 go run ./cmd/server > server.log 2>&1 &
     SERVER_PID=$!
     echo $SERVER_PID > .server.pid
     
-    # Esperar a que el servidor inicie
-    sleep 2
-    
-    if curl -s http://localhost:3000/ping > /dev/null 2>&1; then
+    # Esperar a que el servidor inicie. go run puede tardar si necesita compilar.
+    STARTED=0
+    for _ in {1..15}; do
+      if curl -s http://localhost:3000/ping > /dev/null 2>&1; then
+        STARTED=1
+        break
+      fi
+
+      if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+        break
+      fi
+
+      sleep 1
+    done
+
+    if [ "$STARTED" -eq 1 ]; then
       echo "✅ Servidor iniciado exitosamente (PID: $SERVER_PID)"
       echo "📊 Servidor corriendo en http://localhost:3000"
       echo "📝 Logs en: server.log"
     else
       echo "❌ Error al iniciar el servidor. Ver server.log para detalles."
+      if kill -0 "$SERVER_PID" 2>/dev/null; then
+        kill "$SERVER_PID" 2>/dev/null
+      fi
       rm -f .server.pid
       exit 1
     fi

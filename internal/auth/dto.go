@@ -23,6 +23,11 @@ type RefreshResponse struct {
 	ExpiresIn   int64  `json:"expires_in"`
 }
 
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 type CreateUserRequest struct {
 	Name     string `json:"name"`
 	Username string `json:"username"`
