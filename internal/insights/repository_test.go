@@ -48,6 +48,7 @@ func newTestInsightsRepository(t *testing.T) Repository {
 		CREATE TABLE expenses (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			comercio_id INTEGER NOT NULL,
+			amount REAL,
 			date TEXT NOT NULL,
 			deleted_at TEXT
 		);
@@ -65,8 +66,9 @@ func newTestInsightsRepository(t *testing.T) Repository {
 			(1, 'Active order', 100, 1, '2026-06-02', '2026-06-01', 'whatsapp'),
 			(2, 'Paid order', 80, 2, '2026-06-03', '2026-06-15', 'instagram');
 		INSERT INTO income (order_id, amount, date) VALUES (1, 25, '2026-06-04'), (2, 80, '2026-06-05');
-		INSERT INTO comercios (id, name) VALUES (1, 'Universal');
+		INSERT INTO comercios (id, name) VALUES (1, 'Universal'), (2, 'Mercado');
 		INSERT INTO expenses (id, comercio_id, date) VALUES (1, 1, '2026-06-06');
+		INSERT INTO expenses (id, comercio_id, amount, date) VALUES (2, 2, 45, '2026-06-07');
 		INSERT INTO expense_items (expense_id, quantity, unit_price) VALUES (1, 2, 15);
 	`); err != nil {
 		t.Fatalf("create schema: %v", err)
@@ -88,11 +90,11 @@ func TestRepositoryGetSummary(t *testing.T) {
 	if summary.IncomeTotal != 105 {
 		t.Fatalf("expected income 105, got %.2f", summary.IncomeTotal)
 	}
-	if summary.ExpenseTotal != 30 {
-		t.Fatalf("expected expenses 30, got %.2f", summary.ExpenseTotal)
+	if summary.ExpenseTotal != 75 {
+		t.Fatalf("expected expenses 75, got %.2f", summary.ExpenseTotal)
 	}
-	if summary.Profit != 75 {
-		t.Fatalf("expected profit 75, got %.2f", summary.Profit)
+	if summary.Profit != 30 {
+		t.Fatalf("expected profit 30, got %.2f", summary.Profit)
 	}
 	if summary.PendingCollection != 75 {
 		t.Fatalf("expected pending 75, got %.2f", summary.PendingCollection)
@@ -106,7 +108,7 @@ func TestRepositoryGetSummary(t *testing.T) {
 	if len(summary.SalesByPlatform) != 2 {
 		t.Fatalf("expected sales for 2 platforms, got %#v", summary.SalesByPlatform)
 	}
-	if len(summary.TopExpenseMerchants) != 1 || summary.TopExpenseMerchants[0].Name != "Universal" {
-		t.Fatalf("expected Universal top merchant, got %#v", summary.TopExpenseMerchants)
+	if len(summary.TopExpenseMerchants) != 2 || summary.TopExpenseMerchants[0].Name != "Mercado" {
+		t.Fatalf("expected Mercado top merchant, got %#v", summary.TopExpenseMerchants)
 	}
 }

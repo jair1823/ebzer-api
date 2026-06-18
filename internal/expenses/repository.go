@@ -42,15 +42,17 @@ func (r *repository) Create(ctx context.Context, dto CreateExpenseDTO) (int, err
 
 	var id int
 	if err := tx.QueryRowContext(ctx, `
-		INSERT INTO expenses (comercio_id, date, description)
-		VALUES ($1, COALESCE($2, date('now')), $3)
+		INSERT INTO expenses (comercio_id, date, description, amount)
+		VALUES ($1, COALESCE($2, date('now')), $3, $4)
 		RETURNING id;
-	`, dto.ComercioID, dto.Date, dto.Description).Scan(&id); err != nil {
+	`, dto.ComercioID, dto.Date, dto.Description, dto.Amount).Scan(&id); err != nil {
 		return 0, err
 	}
 
-	if err := r.replaceItems(ctx, tx, id, dto.ComercioID, dto.Items); err != nil {
-		return 0, err
+	if len(dto.Items) > 0 {
+		if err := r.replaceItems(ctx, tx, id, dto.ComercioID, dto.Items); err != nil {
+			return 0, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -63,8 +65,8 @@ func (r *repository) Create(ctx context.Context, dto CreateExpenseDTO) (int, err
 func (r *repository) GetByID(ctx context.Context, id int) (*Expense, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT
-			e.id, e.comercio_id, e.description, e.date, e.created_at,
-			COALESCE(SUM(ei.quantity * ei.unit_price), 0) AS total,
+			e.id, e.comercio_id, e.description, e.date, e.amount, e.created_at,
+			COALESCE(e.amount, SUM(ei.quantity * ei.unit_price), 0) AS total,
 			c.id, c.name, c.description, c.created_at
 		FROM expenses e
 		INNER JOIN comercios c ON c.id = e.comercio_id
@@ -93,8 +95,8 @@ func (r *repository) GetByID(ctx context.Context, id int) (*Expense, error) {
 func (r *repository) GetAll(ctx context.Context, from, to *string, comercioID *int) ([]Expense, error) {
 	query := `
 		SELECT
-			e.id, e.comercio_id, e.description, e.date, e.created_at,
-			COALESCE(SUM(ei.quantity * ei.unit_price), 0) AS total,
+			e.id, e.comercio_id, e.description, e.date, e.amount, e.created_at,
+			COALESCE(e.amount, SUM(ei.quantity * ei.unit_price), 0) AS total,
 			c.id, c.name, c.description, c.created_at
 		FROM expenses e
 		INNER JOIN comercios c ON c.id = e.comercio_id
@@ -166,9 +168,10 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateExpenseDTO) e
 		UPDATE expenses
 		SET comercio_id = $1,
 			date = COALESCE($2, date),
-			description = $3
-		WHERE id = $4 AND deleted_at IS NULL;
-	`, dto.ComercioID, dto.Date, dto.Description, id)
+			description = $3,
+			amount = $4
+		WHERE id = $5 AND deleted_at IS NULL;
+	`, dto.ComercioID, dto.Date, dto.Description, dto.Amount, id)
 	if err != nil {
 		return err
 	}
@@ -180,8 +183,10 @@ func (r *repository) Update(ctx context.Context, id int, dto UpdateExpenseDTO) e
 		return err
 	}
 
-	if err := r.replaceItems(ctx, tx, id, dto.ComercioID, dto.Items); err != nil {
-		return err
+	if len(dto.Items) > 0 {
+		if err := r.replaceItems(ctx, tx, id, dto.ComercioID, dto.Items); err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()
@@ -484,6 +489,7 @@ type rowScanner interface {
 func scanExpense(row rowScanner) (*Expense, error) {
 	var expense Expense
 	var description sql.NullString
+	var amount sql.NullFloat64
 	var comercio Comercio
 	var comercioDescription sql.NullString
 
@@ -492,6 +498,7 @@ func scanExpense(row rowScanner) (*Expense, error) {
 		&expense.ComercioID,
 		&description,
 		&expense.Date,
+		&amount,
 		&expense.CreatedAt,
 		&expense.Total,
 		&comercio.ID,
@@ -505,6 +512,10 @@ func scanExpense(row rowScanner) (*Expense, error) {
 	if description.Valid {
 		value := description.String
 		expense.Description = &value
+	}
+	if amount.Valid {
+		value := amount.Float64
+		expense.Amount = &value
 	}
 	if comercioDescription.Valid {
 		value := comercioDescription.String

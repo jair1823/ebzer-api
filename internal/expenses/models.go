@@ -34,6 +34,7 @@ type Expense struct {
 	Comercio    *Comercio     `json:"comercio,omitempty"`
 	Description *string       `json:"description"`
 	Date        db.Time       `json:"date"`
+	Amount      *float64      `json:"amount"`
 	Total       float64       `json:"total"`
 	Items       []ExpenseItem `json:"items"`
 	CreatedAt   db.Time       `json:"created_at"`

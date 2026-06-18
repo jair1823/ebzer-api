@@ -34,12 +34,17 @@ func (r *repository) GetSummary(ctx context.Context, filter SummaryFilter) (*Sum
 	}
 
 	if err := r.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(ei.quantity * ei.unit_price), 0)
-		FROM expenses e
-		LEFT JOIN expense_items ei ON ei.expense_id = e.id
-		WHERE e.deleted_at IS NULL
-			AND date(e.date) >= date($1)
-			AND date(e.date) <= date($2);
+		WITH expense_totals AS (
+			SELECT e.id, COALESCE(e.amount, SUM(ei.quantity * ei.unit_price), 0) AS total
+			FROM expenses e
+			LEFT JOIN expense_items ei ON ei.expense_id = e.id
+			WHERE e.deleted_at IS NULL
+				AND date(e.date) >= date($1)
+				AND date(e.date) <= date($2)
+			GROUP BY e.id
+		)
+		SELECT COALESCE(SUM(total), 0)
+		FROM expense_totals;
 	`, filter.From, filter.To).Scan(&summary.ExpenseTotal); err != nil {
 		return nil, err
 	}
@@ -136,13 +141,21 @@ func (r *repository) GetSummary(ctx context.Context, filter SummaryFilter) (*Sum
 	}
 
 	merchantRows, err := r.db.QueryContext(ctx, `
-		SELECT c.id, c.name, COALESCE(SUM(ei.quantity * ei.unit_price), 0) AS total
-		FROM expenses e
-		INNER JOIN comercios c ON c.id = e.comercio_id
-		LEFT JOIN expense_items ei ON ei.expense_id = e.id
-		WHERE e.deleted_at IS NULL
-			AND date(e.date) >= date($1)
-			AND date(e.date) <= date($2)
+		WITH expense_totals AS (
+			SELECT
+				e.id,
+				e.comercio_id,
+				COALESCE(e.amount, SUM(ei.quantity * ei.unit_price), 0) AS total
+			FROM expenses e
+			LEFT JOIN expense_items ei ON ei.expense_id = e.id
+			WHERE e.deleted_at IS NULL
+				AND date(e.date) >= date($1)
+				AND date(e.date) <= date($2)
+			GROUP BY e.id
+		)
+		SELECT c.id, c.name, COALESCE(SUM(et.total), 0) AS total
+		FROM expense_totals et
+		INNER JOIN comercios c ON c.id = et.comercio_id
 		GROUP BY c.id, c.name
 		ORDER BY total DESC
 		LIMIT 5;
