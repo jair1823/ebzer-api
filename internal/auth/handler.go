@@ -57,6 +57,27 @@ func (h *Handler) Logout(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"logged_out": true})
 }
 
+func (h *Handler) ChangePassword(c *fiber.Ctx) error {
+	user, ok := CurrentUser(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	var req ChangePasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	if err := h.service.ChangePassword(c.Context(), user.ID, req); err != nil {
+		if errors.Is(err, ErrInvalidCurrentPassword) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid current password"})
+		}
+		if errors.Is(err, ErrInvalidCredentials) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		}
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	return c.JSON(fiber.Map{"updated": true})
+}
+
 func (h *Handler) ListUsers(c *fiber.Ctx) error {
 	users, err := h.service.ListUsers(c.Context())
 	if err != nil {

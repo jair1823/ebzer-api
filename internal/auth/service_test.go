@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type fakeRepository struct {
@@ -261,5 +263,93 @@ func TestRefreshRejectsChangedUsernameClaim(t *testing.T) {
 
 	if _, err := svc.Refresh(context.Background(), login.RefreshToken); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("expected changed username claim to be rejected, got %v", err)
+	}
+}
+
+func TestServiceChangePassword(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	user, err := svc.CreateUser(ctx, CreateUserRequest{
+		Name:     "Operator",
+		Username: "operator",
+		Email:    "operator@example.com",
+		Password: "password123",
+		Role:     RoleOperator,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+
+	err = svc.ChangePassword(ctx, user.ID, ChangePasswordRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "new-password123",
+	})
+	if err != nil {
+		t.Fatalf("ChangePassword returned error: %v", err)
+	}
+
+	if _, err := svc.Login(ctx, LoginRequest{
+		Username: user.Username,
+		Password: "password123",
+	}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected old password to be rejected, got %v", err)
+	}
+	if _, err := svc.Login(ctx, LoginRequest{
+		Username: user.Username,
+		Password: "new-password123",
+	}); err != nil {
+		t.Fatalf("expected new password to work, got %v", err)
+	}
+}
+
+func TestServiceChangePasswordRejectsInvalidInput(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	user, err := svc.CreateUser(ctx, CreateUserRequest{
+		Name:     "Guest",
+		Username: "guest",
+		Email:    "guest@example.com",
+		Password: "password123",
+		Role:     RoleGuest,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser returned error: %v", err)
+	}
+	originalHash := repo.users[user.ID].PasswordHash
+
+	err = svc.ChangePassword(ctx, user.ID, ChangePasswordRequest{
+		CurrentPassword: "wrong-password",
+		NewPassword:     "new-password123",
+	})
+	if !errors.Is(err, ErrInvalidCurrentPassword) {
+		t.Fatalf("expected invalid current password, got %v", err)
+	}
+
+	err = svc.ChangePassword(ctx, user.ID, ChangePasswordRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "short",
+	})
+	if err == nil || err.Error() != "password must be at least 8 characters" {
+		t.Fatalf("expected short password validation error, got %v", err)
+	}
+
+	if repo.users[user.ID].PasswordHash != originalHash {
+		t.Fatal("expected password hash to remain unchanged after rejected changes")
+	}
+
+	repo.users[user.ID].IsActive = false
+	if err := svc.ChangePassword(ctx, user.ID, ChangePasswordRequest{
+		CurrentPassword: "password123",
+		NewPassword:     "new-password123",
+	}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected inactive user to be rejected, got %v", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(repo.users[user.ID].PasswordHash), []byte("password123")); err != nil {
+		t.Fatal("expected original password to remain valid")
 	}
 }

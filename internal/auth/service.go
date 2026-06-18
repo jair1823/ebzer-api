@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid username or password")
-	ErrForbidden          = errors.New("forbidden")
+	ErrInvalidCredentials     = errors.New("invalid username or password")
+	ErrInvalidCurrentPassword = errors.New("invalid current password")
+	ErrForbidden              = errors.New("forbidden")
 )
 
 type Service interface {
@@ -26,6 +27,7 @@ type Service interface {
 	GetUser(ctx context.Context, id int) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	ChangePassword(ctx context.Context, userID int, req ChangePasswordRequest) error
 	UpdateUser(ctx context.Context, id int, req UpdateUserRequest) (*User, error)
 	DeactivateUser(ctx context.Context, id int) error
 	BootstrapInitialAdmin(ctx context.Context) error
@@ -143,6 +145,27 @@ func (s *service) GetUserByEmail(ctx context.Context, email string) (*User, erro
 
 func (s *service) ListUsers(ctx context.Context) ([]User, error) {
 	return s.repo.List(ctx)
+}
+
+func (s *service) ChangePassword(ctx context.Context, userID int, req ChangePasswordRequest) error {
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil || !user.IsActive {
+		return ErrInvalidCredentials
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		return ErrInvalidCurrentPassword
+	}
+	if len(req.NewPassword) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+	hash, err := hashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+	return s.repo.Update(ctx, userID, UpdateUserRequest{}, &hash)
 }
 
 func (s *service) UpdateUser(ctx context.Context, id int, req UpdateUserRequest) (*User, error) {

@@ -155,6 +155,7 @@ func main() {
 
 	authGroup.Get("/me", authHandler.Me)
 	authGroup.Post("/logout", authHandler.Logout)
+	authGroup.Put("/password", authHandler.ChangePassword)
 
 	usersGroup := api.Group("/users", auth.RequireRole(auth.RoleAdmin))
 	usersGroup.Get("/", authHandler.ListUsers)
