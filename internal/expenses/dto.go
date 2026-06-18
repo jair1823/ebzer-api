@@ -40,6 +40,7 @@ type CreateExpenseDTO struct {
 	ComercioID  int                    `json:"comercio_id"`
 	Date        *string                `json:"date"`
 	Description *string                `json:"description"`
+	Amount      *CustomFloat64         `json:"amount"`
 	Items       []CreateExpenseItemDTO `json:"items"`
 }
 
@@ -47,6 +48,7 @@ type UpdateExpenseDTO struct {
 	ComercioID  int                    `json:"comercio_id"`
 	Date        *string                `json:"date"`
 	Description *string                `json:"description"`
+	Amount      *CustomFloat64         `json:"amount"`
 	Items       []CreateExpenseItemDTO `json:"items"`
 }
 

@@ -33,7 +33,7 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) Create(ctx context.Context, dto CreateExpenseDTO) (int, error) {
-	if err := s.normalizeExpense(ctx, &dto.ComercioID, &dto.Date, &dto.Description, dto.Items); err != nil {
+	if err := s.normalizeExpense(ctx, &dto.ComercioID, &dto.Date, &dto.Description, dto.Amount, dto.Items); err != nil {
 		return 0, err
 	}
 
@@ -72,7 +72,7 @@ func (s *service) Update(ctx context.Context, id int, dto UpdateExpenseDTO) erro
 	if id <= 0 {
 		return errors.New("expense ID is required and must be > 0")
 	}
-	if err := s.normalizeExpense(ctx, &dto.ComercioID, &dto.Date, &dto.Description, dto.Items); err != nil {
+	if err := s.normalizeExpense(ctx, &dto.ComercioID, &dto.Date, &dto.Description, dto.Amount, dto.Items); err != nil {
 		return err
 	}
 
@@ -196,7 +196,7 @@ func (s *service) DeleteProduct(ctx context.Context, id int) error {
 	return s.repo.DeleteProduct(ctx, id)
 }
 
-func (s *service) normalizeExpense(ctx context.Context, comercioID *int, date **string, description **string, items []CreateExpenseItemDTO) error {
+func (s *service) normalizeExpense(ctx context.Context, comercioID *int, date **string, description **string, amount *CustomFloat64, items []CreateExpenseItemDTO) error {
 	if comercioID == nil || *comercioID <= 0 {
 		return errors.New("comercio ID is required and must be > 0")
 	}
@@ -213,8 +213,16 @@ func (s *service) normalizeExpense(ctx context.Context, comercioID *int, date **
 	}
 	*date = normalizedDate
 	*description = normalizeOptionalText(*description)
-	if len(items) == 0 {
-		return errors.New("at least one expense item is required")
+	hasAmount := amount != nil
+	hasItems := len(items) > 0
+	if hasAmount && *amount <= 0 {
+		return errors.New("amount must be > 0")
+	}
+	if hasAmount && hasItems {
+		return errors.New("use either amount or expense items, not both")
+	}
+	if !hasAmount && !hasItems {
+		return errors.New("amount or expense items is required")
 	}
 	for index := range items {
 		productName := strings.TrimSpace(items[index].ProductName)

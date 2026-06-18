@@ -88,8 +88,8 @@ func TestServiceCreateValidatesComercioAndItems(t *testing.T) {
 
 	if _, err := service.Create(context.Background(), CreateExpenseDTO{
 		ComercioID: 2,
-	}); err == nil || err.Error() != "at least one expense item is required" {
-		t.Fatalf("expected item required error, got %v", err)
+	}); err == nil || err.Error() != "amount or expense items is required" {
+		t.Fatalf("expected total source required error, got %v", err)
 	}
 
 	if _, err := service.Create(context.Background(), CreateExpenseDTO{
@@ -120,6 +120,61 @@ func TestServiceCreateValidatesComercioAndItems(t *testing.T) {
 	}
 	if repo.createDTO.Items[0].ProductName != "Tela" {
 		t.Fatalf("expected trimmed product name, got %q", repo.createDTO.Items[0].ProductName)
+	}
+}
+
+func TestServiceCreateAcceptsSimpleExpense(t *testing.T) {
+	repo := &fakeExpenseRepository{comercios: map[int]bool{2: true}}
+	service := NewService(repo)
+	amount := CustomFloat64(1250)
+
+	if _, err := service.Create(context.Background(), CreateExpenseDTO{
+		ComercioID: 2,
+		Amount:     &amount,
+	}); err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	if repo.createDTO.Amount == nil || *repo.createDTO.Amount != amount {
+		t.Fatalf("expected amount to be preserved, got %#v", repo.createDTO.Amount)
+	}
+	if len(repo.createDTO.Items) != 0 {
+		t.Fatalf("expected no items for simple expense, got %#v", repo.createDTO.Items)
+	}
+}
+
+func TestServiceCreateRejectsInvalidSimpleExpenseAmount(t *testing.T) {
+	repo := &fakeExpenseRepository{comercios: map[int]bool{2: true}}
+	service := NewService(repo)
+	zeroAmount := CustomFloat64(0)
+	negativeAmount := CustomFloat64(-1)
+
+	if _, err := service.Create(context.Background(), CreateExpenseDTO{
+		ComercioID: 2,
+		Amount:     &zeroAmount,
+	}); err == nil || err.Error() != "amount must be > 0" {
+		t.Fatalf("expected amount error, got %v", err)
+	}
+
+	if _, err := service.Create(context.Background(), CreateExpenseDTO{
+		ComercioID: 2,
+		Amount:     &negativeAmount,
+	}); err == nil || err.Error() != "amount must be > 0" {
+		t.Fatalf("expected amount error, got %v", err)
+	}
+}
+
+func TestServiceCreateRejectsAmountAndItemsTogether(t *testing.T) {
+	repo := &fakeExpenseRepository{comercios: map[int]bool{2: true}}
+	service := NewService(repo)
+	amount := CustomFloat64(1250)
+
+	if _, err := service.Create(context.Background(), CreateExpenseDTO{
+		ComercioID: 2,
+		Amount:     &amount,
+		Items:      []CreateExpenseItemDTO{{ProductName: "Tela", Quantity: 1, UnitPrice: 1}},
+	}); err == nil || err.Error() != "use either amount or expense items, not both" {
+		t.Fatalf("expected mutually exclusive total source error, got %v", err)
 	}
 }
 

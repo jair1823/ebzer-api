@@ -41,6 +41,7 @@ func newTestExpenseRepository(t *testing.T) (*sql.DB, Repository) {
 			comercio_id INTEGER NOT NULL REFERENCES comercios(id) ON DELETE RESTRICT,
 			date TEXT NOT NULL DEFAULT (date('now')),
 			description TEXT,
+			amount REAL CHECK (amount IS NULL OR amount > 0),
 			deleted_at TEXT,
 			deleted_by INTEGER,
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -124,10 +125,43 @@ func TestRepositoryCreateExpenseWithExistingAndNewProducts(t *testing.T) {
 	}
 }
 
+func TestRepositoryCreateSimpleExpense(t *testing.T) {
+	_, repo := newTestExpenseRepository(t)
+	ctx := context.Background()
+	amount := CustomFloat64(2500)
+
+	id, err := repo.Create(ctx, CreateExpenseDTO{
+		ComercioID: 1,
+		Date:       stringPtr("2026-06-08"),
+		Amount:     &amount,
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	expense, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID returned error: %v", err)
+	}
+	if expense == nil {
+		t.Fatal("expected expense")
+	}
+	if expense.Amount == nil || *expense.Amount != 2500 {
+		t.Fatalf("expected amount 2500, got %#v", expense.Amount)
+	}
+	if expense.Total != 2500 {
+		t.Fatalf("expected total 2500, got %v", expense.Total)
+	}
+	if len(expense.Items) != 0 {
+		t.Fatalf("expected no items, got %#v", expense.Items)
+	}
+}
+
 func TestRepositoryGetAllFiltersByDateAndComercio(t *testing.T) {
 	_, repo := newTestExpenseRepository(t)
 	ctx := context.Background()
 	description := "Materiales"
+	simpleAmount := CustomFloat64(2500)
 
 	if _, err := repo.Create(ctx, CreateExpenseDTO{
 		ComercioID:  1,
@@ -144,6 +178,14 @@ func TestRepositoryGetAllFiltersByDateAndComercio(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create second expense: %v", err)
 	}
+	if _, err := repo.Create(ctx, CreateExpenseDTO{
+		ComercioID:  1,
+		Date:        stringPtr("2026-06-07"),
+		Description: stringPtr("Gasto simple"),
+		Amount:      &simpleAmount,
+	}); err != nil {
+		t.Fatalf("create simple expense: %v", err)
+	}
 
 	from := "2026-06-01"
 	to := "2026-06-30"
@@ -152,14 +194,66 @@ func TestRepositoryGetAllFiltersByDateAndComercio(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAll returned error: %v", err)
 	}
-	if len(expenses) != 1 {
-		t.Fatalf("expected 1 expense, got %d", len(expenses))
+	if len(expenses) != 2 {
+		t.Fatalf("expected 2 expenses, got %d", len(expenses))
 	}
 	if expenses[0].Comercio == nil || expenses[0].Comercio.Name != "Universal" {
 		t.Fatalf("expected comercio Universal, got %#v", expenses[0].Comercio)
 	}
-	if len(expenses[0].Items) != 1 {
-		t.Fatalf("expected joined items, got %#v", expenses[0].Items)
+	if expenses[0].Amount == nil || *expenses[0].Amount != 2500 {
+		t.Fatalf("expected simple expense first by date, got %#v", expenses[0])
+	}
+	if len(expenses[1].Items) != 1 {
+		t.Fatalf("expected joined items, got %#v", expenses[1].Items)
+	}
+}
+
+func TestRepositoryUpdateSwitchesBetweenSimpleAndProductModes(t *testing.T) {
+	_, repo := newTestExpenseRepository(t)
+	ctx := context.Background()
+	amount := CustomFloat64(2500)
+
+	id, err := repo.Create(ctx, CreateExpenseDTO{
+		ComercioID: 1,
+		Amount:     &amount,
+	})
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	if err := repo.Update(ctx, id, UpdateExpenseDTO{
+		ComercioID: 1,
+		Items:      []CreateExpenseItemDTO{{ProductName: "Tela", Quantity: 2, UnitPrice: 1000}},
+	}); err != nil {
+		t.Fatalf("Update to product mode returned error: %v", err)
+	}
+	expense, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID product mode returned error: %v", err)
+	}
+	if expense.Amount != nil {
+		t.Fatalf("expected amount to be cleared, got %#v", expense.Amount)
+	}
+	if expense.Total != 2000 || len(expense.Items) != 1 {
+		t.Fatalf("expected product total 2000 with one item, got %#v", expense)
+	}
+
+	newAmount := CustomFloat64(3600)
+	if err := repo.Update(ctx, id, UpdateExpenseDTO{
+		ComercioID: 1,
+		Amount:     &newAmount,
+	}); err != nil {
+		t.Fatalf("Update to simple mode returned error: %v", err)
+	}
+	expense, err = repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID simple mode returned error: %v", err)
+	}
+	if expense.Amount == nil || *expense.Amount != 3600 {
+		t.Fatalf("expected amount 3600, got %#v", expense.Amount)
+	}
+	if expense.Total != 3600 || len(expense.Items) != 0 {
+		t.Fatalf("expected simple total 3600 with no items, got %#v", expense)
 	}
 }
 
