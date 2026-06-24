@@ -52,7 +52,7 @@ func newTestExpenseRepository(t *testing.T) (*sql.DB, Repository) {
 			expense_id INTEGER NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
 			product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
 			product_name TEXT NOT NULL,
-			quantity REAL NOT NULL CHECK (quantity > 0),
+			quantity INTEGER NOT NULL CHECK (quantity > 0),
 			unit_price REAL NOT NULL CHECK (unit_price > 0),
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);
@@ -83,7 +83,7 @@ func TestRepositoryCreateExpenseWithExistingAndNewProducts(t *testing.T) {
 		Date:        &expenseDate,
 		Description: &description,
 		Items: []CreateExpenseItemDTO{
-			{ProductID: &productID, ProductName: "Tela", Quantity: 2.5, UnitPrice: 1200},
+			{ProductID: &productID, ProductName: "Tela", Quantity: 2, UnitPrice: 1200},
 			{ProductName: "Cinta", Quantity: 3, UnitPrice: 250},
 		},
 	})
@@ -98,14 +98,14 @@ func TestRepositoryCreateExpenseWithExistingAndNewProducts(t *testing.T) {
 	if expense == nil {
 		t.Fatal("expected expense")
 	}
-	if expense.Total != 3750 {
-		t.Fatalf("expected total 3750, got %v", expense.Total)
+	if expense.Total != 3150 {
+		t.Fatalf("expected total 3150, got %v", expense.Total)
 	}
 	if len(expense.Items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(expense.Items))
 	}
-	if expense.Items[0].LineTotal != 3000 {
-		t.Fatalf("expected first line total 3000, got %v", expense.Items[0].LineTotal)
+	if expense.Items[0].LineTotal != 2400 {
+		t.Fatalf("expected first line total 2400, got %v", expense.Items[0].LineTotal)
 	}
 
 	var latestPrice float64

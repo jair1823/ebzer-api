@@ -3,6 +3,7 @@ package expenses
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 )
 
@@ -29,10 +30,39 @@ func (c *CustomFloat64) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type CustomInt int
+
+func (c *CustomInt) UnmarshalJSON(data []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	switch value := v.(type) {
+	case float64:
+		if value != math.Trunc(value) {
+			return fmt.Errorf("value must be an integer")
+		}
+		*c = CustomInt(int(value))
+	case string:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return fmt.Errorf("cannot parse string to integer: %v", err)
+		}
+		if f != math.Trunc(f) {
+			return fmt.Errorf("value must be an integer")
+		}
+		*c = CustomInt(int(f))
+	default:
+		return fmt.Errorf("value must be a number or string")
+	}
+	return nil
+}
+
 type CreateExpenseItemDTO struct {
 	ProductID   *int          `json:"product_id"`
 	ProductName string        `json:"product_name"`
-	Quantity    CustomFloat64 `json:"quantity"`
+	Quantity    CustomInt     `json:"quantity"`
 	UnitPrice   CustomFloat64 `json:"unit_price"`
 }
 

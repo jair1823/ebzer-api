@@ -55,7 +55,7 @@ func newTestInsightsRepository(t *testing.T) Repository {
 		CREATE TABLE expense_items (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			expense_id INTEGER NOT NULL,
-			quantity REAL NOT NULL,
+			quantity INTEGER NOT NULL,
 			unit_price REAL NOT NULL
 		);
 
