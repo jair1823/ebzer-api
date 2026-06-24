@@ -23,7 +23,7 @@ type ExpenseItem struct {
 	ExpenseID   int     `json:"expense_id"`
 	ProductID   int     `json:"product_id"`
 	ProductName string  `json:"product_name"`
-	Quantity    float64 `json:"quantity"`
+	Quantity    int     `json:"quantity"`
 	UnitPrice   float64 `json:"unit_price"`
 	LineTotal   float64 `json:"line_total"`
 }

@@ -2,6 +2,7 @@ package expenses
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 )
 
@@ -106,7 +107,7 @@ func TestServiceCreateValidatesComercioAndItems(t *testing.T) {
 		Date:        &expenseDate,
 		Description: &description,
 		Items: []CreateExpenseItemDTO{
-			{ProductName: " Tela ", Quantity: 1.5, UnitPrice: 1200},
+			{ProductName: " Tela ", Quantity: 2, UnitPrice: 1200},
 		},
 	}); err != nil {
 		t.Fatalf("Create returned error: %v", err)
@@ -120,6 +121,14 @@ func TestServiceCreateValidatesComercioAndItems(t *testing.T) {
 	}
 	if repo.createDTO.Items[0].ProductName != "Tela" {
 		t.Fatalf("expected trimmed product name, got %q", repo.createDTO.Items[0].ProductName)
+	}
+}
+
+func TestCreateExpenseItemDTORejectsDecimalQuantity(t *testing.T) {
+	var dto CreateExpenseItemDTO
+	err := json.Unmarshal([]byte(`{"product_name":"Tela","quantity":1.9,"unit_price":1200}`), &dto)
+	if err == nil || err.Error() != "value must be an integer" {
+		t.Fatalf("expected integer quantity error, got %v", err)
 	}
 }
 
